@@ -1,0 +1,731 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>SK STUDY POINT SARGOTH</title>
+    <link rel="icon" type="image/png" href="logo.png">
+    <!-- External Fonts and Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&family=Noto+Sans+Devanagari:wght@400;500;600;700&display=swap" rel="stylesheet">
+    
+    <!-- CSS File Link -->
+    <link rel="stylesheet" href="style.css">
+    <link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#6c42d1">
+</head>
+<body data-theme="light">
+
+    <!-- 🔥 MAINTENANCE MODE SCREEN -->
+    <div id="maintenanceScreen" style="position:fixed; top:0; left:0; width:100%; height:100%; background:var(--bg); z-index:9999999; display:none; flex-direction:column; justify-content:center; align-items:center; text-align:center; padding:20px; backdrop-filter: blur(10px);">
+        <i class="fas fa-tools" style="font-size:5rem; color:#f59e0b; margin-bottom:20px; animation: pulse 2s infinite;"></i>
+        <h2 style="color:var(--text); margin-bottom:10px; font-size:1.5rem; font-weight:800;">App is Under Maintenance</h2>
+        <p id="maintenanceMsg" style="color:var(--text-gray); font-weight:600; line-height:1.5;">We are updating our servers with new study material. Please check back after some time.</p>
+    </div>
+
+    <!-- 1. FIRST TIME OPEN: Logo Splash Screen -->
+    <div id="logoSplashScreen" style="position:fixed; top:0; left:0; width:100%; height:100%; background: linear-gradient(135deg, #02112a, #112a52); z-index:10000; display:none; justify-content:center; align-items:center; flex-direction:column;">
+        <img src="logo.png" alt="SK Study Point" class="splash-logo-img">
+        <div class="splash-text">SK STUDY POINT SARGOTH</div>
+        <div style="margin-top:20px; width:60px; height:4px; background:rgba(255,255,255,0.1); border-radius:10px; overflow:hidden;">
+            <div class="splash-loading-bar"></div>
+        </div>
+    </div>
+
+    <!-- 2. REFRESH: Spinner Splash Screen -->
+    <div id="spinnerSplashScreen" style="position:fixed; top:0; left:0; width:100%; height:100%; background:var(--bg); z-index:9999; display:none; justify-content:center; align-items:center;">
+        <i class="fas fa-spinner fa-spin" style="font-size:3rem; color:var(--primary);"></i>
+    </div>
+
+    <!-- MODERN ALERT SYSTEM (Success & Error) -->
+    <div id="modernToast" class="modern-toast">
+        <div class="toast-icon" id="toastIcon"></div>
+        <div class="toast-message" id="toastText">Message</div>
+    </div>
+
+    <!-- ==================== AUTHENTICATION TAB ==================== -->
+    <div id="authTab" class="tab-content">
+        <div class="auth-wrapper">
+            <!-- LOGIN CARD -->
+            <div class="auth-card active" id="loginCard">
+                <div class="auth-logo"><i class="fas fa-graduation-cap"></i></div>
+                <div class="auth-title">Welcome Back!</div>
+                <div class="auth-subtitle">SK STUDY POINT SARGOTH</div>
+                
+                <div class="auth-input-group">
+                    <label>Email ID or Mobile Number</label>
+                    <input type="text" id="loginId" placeholder="Enter Email or Mobile (e.g. +91...)">
+                </div>
+                <div class="auth-input-group">
+                    <label>Password</label>
+                    <input type="password" id="loginPass" placeholder="Enter your password">
+                    <div style="text-align: right; margin-top: 8px;">
+                        <span class="link-text translatable" data-en="Forgot Password?" data-hi="पासवर्ड भूल गए?" style="font-size: 0.75rem;" onclick="switchAuthView('forgotCard')">Forgot Password?</span>
+                    </div>
+                </div>
+                
+                <button class="btn-primary translatable" data-en="Login Securely" data-hi="लॉगिन करें" onclick="processLogin()" style="padding: 14px; font-size: 1rem; margin-top: 10px;">Login Securely</button>
+                
+                <div style="margin-top: 25px; font-size: 0.85rem; color: var(--text-gray);">
+                    <span class="translatable" data-en="Don't have an account?" data-hi="अकाउंट नहीं है?">Don't have an account?</span> 
+                    <span class="link-text translatable" data-en="Sign Up" data-hi="साइन अप करें" onclick="switchAuthView('signupCard')">Sign Up</span>
+                </div>
+            </div>
+
+            <!-- SIGN UP CARD -->
+            <div class="auth-card" id="signupCard">
+                <div class="auth-logo"><i class="fas fa-user-plus"></i></div>
+                <div class="auth-title translatable" data-en="Create Account" data-hi="अकाउंट बनाएं">Create Account</div>
+                <div class="auth-subtitle translatable" data-en="Join SK STUDY POINT SARGOTH" data-hi="SK STUDY POINT SARGOTH से जुड़ें">Join SK STUDY POINT SARGOTH</div>
+                
+                <div class="auth-input-group"><label class="translatable" data-en="Full Name" data-hi="पूरा नाम">Full Name</label><input type="text" id="regName" placeholder="Name"></div>
+                
+                <div style="display: flex; gap: 10px;">
+                    <div class="auth-input-group" style="flex: 1;">
+                        <label class="translatable" data-en="Gender" data-hi="लिंग">Gender</label>
+                        <select id="regGender"><option value="Male">Male</option><option value="Female">Female</option><option value="Other">Other</option></select>
+                    </div>
+                    <div class="auth-input-group" style="flex: 1;">
+                        <label class="translatable" data-en="Date of Birth" data-hi="जन्म तिथि">Date of Birth</label>
+                        <input type="date" id="regDob">
+                    </div>
+                </div>
+
+                <div class="auth-input-group"><label class="translatable" data-en="Mobile Number" data-hi="मोबाइल नंबर">Mobile Number</label><input type="tel" id="regPhone" placeholder="10-digit number"></div>
+                <div class="auth-input-group"><label class="translatable" data-en="Email ID" data-hi="ईमेल आईडी">Email ID</label><input type="email" id="regEmail" placeholder="user@example.com"></div>
+                <div class="auth-input-group"><label class="translatable" data-en="Create Password" data-hi="पासवर्ड बनाएं">Create Password</label><input type="password" id="regPass1" placeholder="Strong password"></div>
+                <div class="auth-input-group"><label class="translatable" data-en="Confirm Password" data-hi="पासवर्ड कन्फर्म करें">Confirm Password</label><input type="password" id="regPass2" placeholder="Repeat password"></div>
+                <div class="auth-input-group"><label>Referral Code (Optional)</label><input type="text" id="regReferral" placeholder="e.g. SK-ABC12" style="text-transform: uppercase;"></div>
+                
+               
+                <button class="otp-btn translatable" id="regSendOtpBtn" data-en="Send OTP to Email" data-hi="ईमेल पर OTP भेजें" onclick="sendOtp('register')">Send OTP to Email</button>
+                <div class="auth-input-group otp-box" id="regOtpBox" style="margin-top: 15px;">
+                    <input type="number" id="regOtpInput" placeholder="Enter 4-digit OTP" disabled>
+                </div>
+
+                <button id="regBtn" class="btn-primary translatable" data-en="Register Now" data-hi="रजिस्टर करें" onclick="processSignup()" style="padding: 14px; font-size: 1rem; margin-top: 10px;">Register Now</button>
+                
+                <div style="margin-top: 25px; font-size: 0.85rem; color: var(--text-gray);">
+                    <span class="translatable" data-en="Already have an account?" data-hi="पहले से अकाउंट है?">Already have an account?</span> 
+                    <span class="link-text translatable" data-en="Login" data-hi="लॉगिन करें" onclick="switchAuthView('loginCard')">Login</span>
+                </div>
+            </div>
+
+           <!-- FORGOT PASSWORD CARD -->
+            <div class="auth-card" id="forgotCard">
+                <div class="auth-logo"><i class="fas fa-unlock-alt"></i></div>
+                <div class="auth-title translatable" data-en="Reset Password" data-hi="पासवर्ड रिसेट करें">Reset Password</div>
+                <div class="auth-subtitle translatable" data-en="Verify DOB to receive a reset link" data-hi="पासवर्ड रिसेट लिंक पाने के लिए जन्म तिथि वेरीफाई करें">Verify DOB to receive a reset link</div>
+                
+                <div class="auth-input-group">
+                    <label class="translatable" data-en="Registered Email ID" data-hi="रजिस्टर्ड ईमेल आईडी">Registered Email ID</label>
+                    <input type="email" id="forgotEmail" placeholder="user@example.com">
+                </div>
+
+                <div class="auth-input-group">
+                    <label class="translatable" data-en="Date of Birth" data-hi="जन्म तिथि">Date of Birth</label>
+                    <input type="date" id="forgotDob">
+                </div>
+                
+                <button class="btn-primary translatable" id="forgotSendOtpBtn" data-en="Verify Details & Send Link" data-hi="डिटेल्स जांचें और लिंक भेजें" onclick="processResetPassword()" style="padding: 14px; font-size: 1rem; margin-top: 10px;">Verify Details & Send Link</button>
+
+                <div style="margin-top: 25px; font-size: 0.85rem; color: var(--text-gray);">
+                    <span class="link-text translatable" data-en="Back to Login" data-hi="वापस लॉगिन पर जाएं" onclick="switchAuthView('loginCard')">Back to Login</span>
+                </div>
+            </div>
+            
+            <!-- यह तीनों कार्ड्स के नीचे आएगा -->
+            <div class="auth-premium-footer">
+                <div class="trust-badges">
+                    <span><i class="fas fa-shield-alt"></i> <span class="translatable" data-en="100% Secure" data-hi="100% सुरक्षित">100% Secure</span></span>
+                    <span><i class="fas fa-user-graduate"></i> <span class="translatable" data-en="Trusted Platform" data-hi="भरोसेमंद प्लेटफॉर्म">Trusted Platform</span></span>
+                </div>
+                <p style="text-align: center; margin: 20px 0 10px 0; font-size: 14px; color: #ffffff;">
+                    <a href="terms.html" style="color: #bebebe; text-decoration: underline;">Terms & Conditions</a> • 
+                    <a href="privacy.html" style="color: #bebebe; text-decoration: underline;">Privacy Policy</a>
+                </p>
+                <p style="text-align: center; font-size: 12px; opacity: 0.8;">
+                    © 2026 SK STUDY POINT SARGOTH
+                </p>
+            </div>
+        </div> 
+    </div>
+
+    <!-- ==================== HOME TAB ==================== -->
+    <div id="home" class="tab-content">
+        <div class="header-main">
+            <div class="header-top">
+                <div class="user-profile">
+                    <img id="homeProfileImg" src="default-male.png" alt="Profile">
+                    <div>
+                        <h2 id="homeUserName">User Name</h2>
+                        <span>SK STUDY POINT SARGOTH</span>
+                    </div>
+                </div>
+                <div class="gamification">
+                    <div class="badge"><i class="fas fa-fire" style="color: #ff9f43;"></i> <span id="homeStreak">0</span></div>
+                    <div class="badge"><i class="fas fa-coins" style="color: #f1c40f;"></i> <span id="homeCoins">0</span></div>
+                    <div class="bell-icon"><i class="fas fa-bell"></i><div class="dot"></div></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="search-container">
+            <i class="fas fa-search"></i>
+            <input type="text" id="searchInput" placeholder="Search courses, tests, exams..." oninput="handleSearch()">
+        </div>
+        
+        <!-- NEW SMOOTH NEWS TICKER -->
+        <div class="news-ticker">
+            <div class="news-label"><i class="fas fa-bolt"></i> <span class="translatable" data-en="UPDATE" data-hi="अपडेट">UPDATE</span></div>
+            <div class="ticker-wrapper">
+                <div class="ticker-text">
+                Loading latest updates...
+                </div>
+            </div>
+        </div>
+
+        <!-- APP BANNER SLIDER WITH DOTS -->
+        <div style="position: relative; margin-bottom: 25px;">
+            <div class="app-banner-slider" id="appBannerSlider" style="display: flex; overflow-x: auto; scroll-snap-type: x mandatory; gap: 15px; padding: 0 20px; scroll-behavior: smooth;">
+                <!-- Banners will load dynamically -->
+            </div>
+            
+            <!-- DOTS CONTAINER -->
+            <div id="bannerDots" style="display: flex; justify-content: center; gap: 6px; margin-top: 12px;">
+                <!-- Dots will load here -->
+            </div>
+        </div>
+
+        <!-- NEW TARGET BOX & QUOTE -->
+        <div class="new-target-container">
+            <div class="active-target-box" id="activeTargetBox">
+                <div class="target-left">
+                    <div class="target-icon-modern"><i class="fas fa-crosshairs"></i></div>
+                    <div class="target-info">
+                        <p class="translatable" data-en="CURRENT TARGET" data-hi="वर्तमान लक्ष्य">CURRENT TARGET</p>
+                        <h3 id="targetHeader" class="translatable" data-en="All Exams Selection" data-hi="सभी परीक्षाएं">All Exams Selection</h3>
+                    </div>
+                </div>
+            </div>
+            <div class="motivation-quote-box">
+                <i class="fas fa-quote-left quote-icon"></i>
+                <span id="dailyQuoteText" class="translatable" data-en="" data-hi=""></span>
+            </div>
+        </div>
+
+        <div class="section-title translatable" data-en="🎯 Explore Exams" data-hi="🎯 परीक्षाएं खोजें">🎯 Explore Exams</div>
+        <div class="grid-4col" id="examGrid">
+            <div class="exam-item" onclick="selectCategory('rpsc', this)"><div class="css-logo logo-rpsc"><i class="fas fa-landmark"></i></div><span>RPSC</span></div>
+            <div class="exam-item" onclick="selectCategory('rssb', this)"><div class="css-logo logo-rssb"><i class="fas fa-clipboard-list"></i></div><span>RSSB</span></div>
+            <div class="exam-item" onclick="selectCategory('ssc', this)"><div class="css-logo logo-ssc"><i class="fas fa-user-tie"></i></div><span>SSC</span></div>
+            <div class="exam-item" onclick="selectCategory('railway', this)"><div class="css-logo logo-railway"><i class="fas fa-train"></i></div><span class="translatable" data-en="RAILWAY" data-hi="रेलवे">RAILWAY</span></div>
+        </div>
+
+        <div class="section-title translatable" data-en="📚 Study Material" data-hi="📚 अध्ययन सामग्री">📚 Study Material</div>
+        <div class="grid-container">
+            <div class="menu-item" onclick="switchTab('live', document.querySelectorAll('.nav-item')[0])"><div class="live-dot"></div><div class="pro-icon icon-live"><i class="fas fa-video"></i></div><span class="translatable" data-en="LIVE CLASS" data-hi="लाइव क्लास">LIVE CLASS</span></div>
+            <div class="menu-item" onclick="switchTab('courses', null, 'all')"><div class="pro-icon icon-course"><i class="fas fa-book-open"></i></div><span class="translatable" data-en="COURSES" data-hi="कोर्सेज">COURSES</span></div>
+            <div class="menu-item" onclick="switchTab('test', null, 'all')"><div class="pro-icon icon-test"><i class="fas fa-laptop-code"></i></div><span class="translatable" data-en="TEST SERIES" data-hi="टेस्ट सीरीज़">TEST SERIES</span></div>
+            <div class="menu-item" onclick="openAppSyllabus()"><div class="pro-icon icon-syllabus"><i class="fas fa-list-alt"></i></div><span class="translatable" data-en="SYLLABUS" data-hi="सिलेबस">SYLLABUS</span></div>
+            <div class="menu-item" onclick="switchTab('cart', null)">
+                <div class="pro-icon icon-cart" style="position:relative;">
+                    <i class="fas fa-shopping-cart"></i>
+                    <div class="cart-badge" id="cartBadgeMenu">0</div>
+                </div>
+                <span class="translatable" data-en="CART" data-hi="कार्ट">CART</span>
+            </div>
+            <div class="menu-item" onclick="switchTab('doubts', document.querySelectorAll('.nav-item')[3])"><div class="pro-icon icon-ai"><i class="fas fa-robot"></i></div><span class="translatable" data-en="AI SOLVER" data-hi="एआई सॉल्वर">AI SOLVER</span></div>
+        </div>
+
+        <div class="section-title translatable" data-en="❓ Question of the Day" data-hi="❓ आज के प्रश्न">❓ Question of the Day</div>
+        <div class="qod-container-main" id="qodContainerMain">
+            <!-- यहाँ JS के द्वारा सिंगल प्रश्न या रिपोर्ट कार्ड आएगा -->
+        </div>
+    </div>
+
+    <!-- ==================== LIVE CLASS TAB (3 TABS) ==================== -->
+    <div id="live" class="tab-content">
+        <div class="page-header" style="margin-bottom:0;">
+            <i class="fas fa-arrow-left" style="font-size: 1.2rem; cursor: pointer;" onclick="switchTab('home', document.querySelectorAll('.nav-item')[0])"></i>
+            <h2 class="translatable" data-en="Live Classes" data-hi="लाइव क्लासेज">Live Classes</h2>
+        </div>
+        
+        <div class="scroll-menu" style="background:var(--white); padding:10px 20px; box-shadow:0 4px 10px rgba(0,0,0,0.05); margin-bottom:15px; border-radius:0 0 20px 20px;">
+            <span class="live-sub-tab active" onclick="filterLiveClasses('LIVE', this)">🔴 Live Now</span>
+            <span class="live-sub-tab" onclick="filterLiveClasses('UPCOMING', this)">🟡 Upcoming</span>
+            <span class="live-sub-tab" onclick="filterLiveClasses('COMPLETED', this)">⚪ Completed</span>
+        </div>
+
+        <div id="liveClassContainer" style="padding: 0 20px 100px;">
+            <div style="text-align:center; padding:30px; color:var(--text-gray);">Loading Classes...</div>
+        </div>
+    </div>
+
+    <!-- ==================== NOTIFICATIONS MODAL PAGE ==================== -->
+    <div id="notificationPage" class="modal-overlay" style="display: none; align-items: flex-end;">
+        <div class="modal-box" style="width: 100%; max-width: 480px; height: 85vh; border-radius: 25px 25px 0 0; padding: 0; background: var(--bg); display: flex; flex-direction: column;">
+            <div style="padding: 20px; background: var(--white); border-radius: 25px 25px 0 0; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 4px 10px rgba(0,0,0,0.05);">
+                <h3 style="font-size: 1.2rem; font-weight: 800; color: var(--text);"><i class="fas fa-bell" style="color: #f59e0b;"></i> Notifications</h3>
+                <i class="fas fa-times" style="font-size: 1.5rem; color: var(--text-gray); cursor: pointer;" onclick="closeModal('notificationPage')"></i>
+            </div>
+            <div id="notiListContainer" style="padding: 20px; overflow-y: auto; flex: 1; padding-bottom: 50px;">
+            </div>
+        </div>
+    </div>
+
+    <!-- ==================== COURSES TAB ==================== -->
+    <div id="courses" class="tab-content">
+        <div class="page-header">
+            <i class="fas fa-arrow-left" style="font-size: 1.2rem; cursor: pointer;" onclick="switchTab('home', document.querySelectorAll('.nav-item')[0])"></i>
+            <h2 id="coursePageTitle" class="translatable" data-en="All Courses" data-hi="सभी कोर्सेज">All Courses</h2>
+        </div>
+        <div id="courseContainer">
+            <div class="empty-state" id="emptyCourseMsg">
+                <i class="fas fa-box-open"></i><br>
+                <span class="translatable" data-en="You haven't purchased any courses yet." data-hi="आपने अभी तक कोई कोर्स नहीं खरीदा है।">You haven't purchased any courses yet.</span><br>
+                <button class="btn-primary translatable" data-en="Explore All Courses" data-hi="सभी कोर्सेज देखें" style="margin-top:20px; width:auto; padding:10px 20px;" onclick="switchTab('courses', null, 'all')">Explore All Courses</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ==================== TEST SERIES TAB ==================== -->
+    <div id="test" class="tab-content">
+        <div class="page-header"><i class="fas fa-arrow-left" style="cursor: pointer;" onclick="switchTab('home', document.querySelectorAll('.nav-item')[0])"></i><h2 id="testPageTitle">All Test Series</h2></div>
+        
+        <div id="testContainer">
+            <div class="empty-state" id="emptyTestMsg">
+                <i class="fas fa-file-alt"></i><br>
+                <span>You haven't purchased any tests yet.</span><br>
+                <button class="btn-primary" style="margin-top:20px; width:auto; padding:10px 20px;" onclick="switchTab('test', null, 'all')">Explore All Tests</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ==================== TEST DETAILS PAGE ==================== -->
+    <div id="testDetailsPage" class="tab-content test-details-theme">
+        <div class="page-header">
+            <i class="fas fa-arrow-left" style="font-size: 1.2rem; cursor: pointer; color: white;" onclick="closeTestDetails()"></i>
+            <h2 style="color: white; flex: 1;" id="tdHeaderTitle">Loading...</h2>
+        </div>
+        <div style="padding: 15px;">
+            <img id="tdImage" src="logo.png" style="width:100%; height: 180px; object-fit: cover; border-radius:10px; margin-bottom: 15px; border: 1px solid #333;">
+            <h3 id="tdTitle" style="font-size: 1.1rem; font-weight: 700; margin-bottom: 8px;">Fetching details...</h3>
+            <p id="tdMeta" style="font-size: 0.8rem; color: #aaa; margin-bottom: 20px;">Duration: -- Mins &nbsp;|&nbsp; Validity: --</p>
+
+            <h4 style="color: #f39c12; margin-bottom: 10px; font-size: 0.95rem;">Test Offerings</h4>
+            <div id="tdOfferings" style="border: 1px solid #555; border-radius: 10px; padding: 15px; margin-bottom: 20px; display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+            </div>
+            
+            <div style="display: flex; gap: 20px; border-bottom: 1px solid #444; padding-bottom: 10px; margin-bottom: 15px;">
+                <span style="font-weight: bold; border-bottom: 2px solid white; padding-bottom: 10px;">Content Included</span>
+            </div>
+
+            <div style="background: #3a3a3a; padding: 15px; border-radius: 10px; display: flex; align-items: center; gap: 15px; margin-bottom: 100px;">
+                <div style="background: #2d2d2d; padding: 10px; border-radius: 8px; text-align: center; min-width: 80px;">
+                    <i class="fas fa-file-alt" style="color: #f1c40f; font-size: 1.5rem;"></i><br>
+                    <span id="tdQCount" style="font-size: 0.7rem; color: #f1c40f; font-weight:bold;">0 Qs</span>
+                </div>
+                <span id="tdContentTitle" style="font-size: 0.85rem;">Mock Test Paper</span>
+            </div>
+        </div>
+        <div style="position: fixed; bottom: 0; left: 50%; transform: translateX(-50%); width: 100%; max-width: 480px; background: #000; padding: 15px 20px; display: flex; justify-content: space-between; align-items: center; z-index: 100; border-top: 1px solid #222;">
+            <div>
+                <p id="tdOldPrice" style="font-size: 0.7rem; color: #aaa; text-decoration: line-through; margin-bottom: 2px;">Price: ₹0</p>
+                <h2 id="tdNewPrice" style="color: white; font-size: 1.5rem;">₹0</h2>
+            </div>
+            <button id="tdBuyBtn" style="background: #f1c40f; color: black; border: none; padding: 12px 30px; border-radius: 8px; font-weight: bold; font-size: 1.1rem; cursor: pointer;">Buy Now</button>
+        </div>
+    </div>
+
+    <!-- ==================== TEST FOLDER PAGE ==================== -->
+    <div id="testFolderPage" class="tab-content course-player-theme">
+        <div class="course-header-dark" id="testFolderHeader">
+            <i class="fas fa-arrow-left" style="cursor: pointer;" onclick="handleTestBackBtn()"></i>
+            <h2 id="openedTestSeriesTitle">Test Series Content</h2>
+        </div>
+        <div style="padding: 15px; padding-bottom: 100px;">
+            <div id="testBreadcrumb" style="font-size: 0.8rem; color: var(--primary); margin-bottom: 15px; font-weight: bold; white-space: nowrap; overflow-x: auto; padding-bottom: 5px;"></div>
+            <div id="testContentArea"></div>
+        </div>
+    </div>
+
+   <!-- ==================== APP THEME COURSE PLAYER ==================== -->
+    <div id="courseDetailsPage" class="tab-content course-player-theme">
+        <div id="videoPlayerWrapper" class="video-player-wrapper">
+            <div style="background: #000; padding: 10px 15px; display: flex; justify-content: space-between; align-items: center;">
+                <i class="fas fa-arrow-left" style="color: white; font-size: 1.2rem; cursor: pointer;" onclick="closeVideoPlayer()"></i>
+                <span style="color: white; font-size: 0.9rem; font-weight: bold;">Playing Video</span>
+                <div style="width: 20px;"></div>
+            </div>
+            <div class="video-container">
+                <iframe id="courseVideoPlayer" style="width: 100%; height: 100%; border: none;" src="" allow="autoplay; fullscreen"></iframe>
+            </div>
+            <div class="video-bottom-info">
+                <h3 id="playingVideoTitle" style="font-size: 1.05rem; font-weight: 800; color: var(--text);">Video Title</h3>
+                <div class="video-bottom-tabs">
+                    <button class="v-tab-btn active" id="tabClassBtn" onclick="filterCourseContent('video')">Class</button>
+                    <button class="v-tab-btn" id="tabPdfBtn" onclick="filterCourseContent('pdf')">PDF</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="course-header-dark" id="courseHeaderDark">
+            <i class="fas fa-arrow-left" style="cursor: pointer;" onclick="handleCourseBackBtn()"></i>
+            <h2 id="openedCourseTitle">Course Content</h2>
+        </div>
+        <div style="padding: 15px; padding-bottom: 100px;">
+            <div id="courseContentArea"></div>
+        </div>
+    </div>
+
+    <!-- ==================== SYLLABUS FOLDER TAB ==================== -->
+    <div id="syllabusTab" class="tab-content course-player-theme">
+        <div class="course-header-dark" style="background:var(--primary); color:white;">
+            <i class="fas fa-arrow-left" style="cursor: pointer; color:white;" onclick="handleSyllabusBack()"></i>
+            <h2 style="color:white;">App Syllabus</h2>
+        </div>
+        <div style="padding: 15px; padding-bottom: 100px;">
+            <div id="sylBreadcrumb" style="font-size: 0.8rem; color: var(--primary); margin-bottom: 15px; font-weight: bold;"></div>
+            <div id="syllabusContentArea"></div>
+        </div>
+    </div>
+
+    <!-- ==================== CART TAB ==================== -->
+    <div id="cart" class="tab-content">
+        <div class="page-header">
+            <i class="fas fa-arrow-left" style="font-size: 1.2rem; cursor: pointer;" onclick="switchTab('home', document.querySelectorAll('.nav-item')[0])"></i>
+            <h2 class="translatable" data-en="My Cart" data-hi="माय कार्ट">My Cart</h2>
+        </div>
+        <div id="cartItemsList" style="padding-bottom: 150px;"></div>
+        <div class="checkout-box" id="checkoutBox" style="display: none; box-sizing: border-box; width: 100%;">
+            
+            <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 15px; border-bottom: 1px dashed #cbd5e1; padding-bottom: 15px; box-sizing: border-box;">
+                <input type="text" id="promoInput" placeholder="Promo Code (e.g. SK50)" style="flex: 1; width: 100%; padding: 12px; border-radius: 8px; border: 1px solid #cbd5e1; outline: none; text-transform: uppercase; font-weight: bold; background: var(--bg); color: var(--text); font-size: 0.85rem; box-sizing: border-box; margin: 0;">
+                <button onclick="applyPromoCode()" style="background: var(--text); color: var(--bg); border: none; padding: 12px 20px; border-radius: 8px; font-weight: 800; cursor: pointer; white-space: nowrap; flex-shrink: 0; box-sizing: border-box; margin: 0;">Apply</button>
+            </div>
+            
+            <div id="discountRow" style="display: none; justify-content: space-between; margin-bottom: 10px; font-weight: 700; color: #10b981; font-size: 0.9rem;">
+                <span>Discount Applied:</span>
+                <span id="discountAmount">- ₹0</span>
+            </div>
+
+            <div style="display: flex; justify-content: space-between; margin-bottom: 15px; font-weight: 800; font-size: 1.2rem; color: var(--text);">
+                <span class="translatable" data-en="Total Amount:" data-hi="कुल राशि:">Total Amount:</span>
+                <span id="cartTotal">₹0</span>
+            </div>
+            <button class="btn-primary translatable" data-en="Proceed to Pay" data-hi="भुगतान करें" onclick="checkout()" style="width: 100%; box-sizing: border-box; margin: 0;">Proceed to Pay</button>
+        </div>
+    </div>
+
+    <!-- ==================== AI SOLVER TAB ==================== -->
+    <div id="doubts" class="tab-content">
+        <div class="page-header">
+            <i class="fas fa-arrow-left" style="font-size: 1.2rem; cursor: pointer;" onclick="switchTab('home', document.querySelectorAll('.nav-item')[0])"></i>
+            <h2><i class="fas fa-robot" style="color: var(--primary); margin-right: 10px;"></i>SK STUDY POINT AI</h2>
+        </div>
+        <div class="chat-area" id="chatArea">
+            <div class="msg msg-ai"><i class="fas fa-robot"></i> नमस्ते! मैं SK STUDY POINT SARGOTH का AI Assistant हूँ।<br>आप मुझसे कोई भी Doubt पूछ सकते हैं।</div>
+        </div>
+        <div class="chat-input-wrapper">
+            <div class="chat-input">
+                <input type="text" id="aiInput" placeholder="Type your doubt here...">
+                <button type="button" id="sendBtn" onclick="handleSendAI()"><i class="fas fa-paper-plane"></i></button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ==================== PROFILE TAB ==================== -->
+    <div id="profile" class="tab-content">
+        <div class="profile-bg">
+            <div class="welcome-3d-container">
+                <div class="welcome-3d-text translatable" data-en="WELCOME TO SK STUDY POINT SARGOTH" data-hi="SK STUDY POINT SARGOTH में स्वागत है">WELCOME TO SK STUDY POINT SARGOTH</div>
+            </div>
+        </div>
+       
+        <div class="profile-info">
+            <div style="position: relative; display: inline-block;">
+                <img id="profilePageImg" src="default-male.png" alt="Profile">
+            </div>
+            <h2 id="profileNameDisplay">User Name</h2>
+            <p id="profileEmailDisplay">user@example.com</p>
+            
+            <div style="text-align: center; margin-top: 15px;">
+                <button class="translatable" data-en="Edit Profile" data-hi="प्रोफाइल एडिट करें" style="background: var(--primary); color: white; border: none; padding: 8px 20px; border-radius: 25px; font-weight: 600; cursor: pointer; box-shadow: 0 4px 10px rgba(139, 92, 246, 0.3);" onclick="openEditProfileModal()">
+                    <i class="fas fa-user-edit"></i> Edit Profile
+                </button>
+            </div>
+        </div>
+
+        <div class="stats-grid">
+            <div class="stat-card"><i class="fas fa-clipboard-list" style="color: #3b82f6;"></i><div class="val" id="statTests">0</div><div class="label translatable" data-en="TESTS TAKEN" data-hi="दिए गए टेस्ट">TESTS TAKEN</div></div>
+            <div class="stat-card"><i class="fas fa-bullseye" style="color: #ef4444;"></i><div class="val" id="statAvg">0%</div><div class="label translatable" data-en="AVG. SCORE" data-hi="औसत स्कोर">AVG. SCORE</div></div>
+            <div class="stat-card"><i class="fas fa-fire" style="color: #f59e0b;"></i><div class="val" id="statStreak">0</div><div class="label translatable" data-en="STREAK DAYS" data-hi="लगातार दिन">STREAK DAYS</div></div>
+            <div class="stat-card"><i class="fas fa-globe" style="color: #10b981;"></i><div class="val" id="statRank">N/A</div><div class="label translatable" data-en="GLOBAL RANK" data-hi="ग्लोबल रैंक">GLOBAL RANK</div></div>
+        </div>
+
+        <div class="profile-menu">
+            <div style="padding: 0 20px 15px;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                    <h4 style="color: var(--text); font-weight: 700;" class="translatable" data-en="My Library & Activity" data-hi="मेरी लाइब्रेरी और गतिविधि">My Library & Activity</h4>
+                </div>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+                    <div style="background: var(--white); padding: 18px; border-radius: 16px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); cursor:pointer;" onclick="switchTab('courses', document.querySelectorAll('.nav-item')[1], 'purchased')"><strong class="translatable" data-en="My Courses" data-hi="मेरे कोर्सेज">My Courses</strong><br><small style="color: var(--text-gray);" id="statCourses">0 Active</small></div>
+                    <div style="background: var(--white); padding: 18px; border-radius: 16px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); cursor:pointer;" onclick="switchTab('test', document.querySelectorAll('.nav-item')[2], 'purchased')"><strong class="translatable" data-en="Test Series" data-hi="टेस्ट सीरीज़">Test Series</strong><br><small style="color: var(--text-gray);" id="statTestsPurchased">0 Purchased</small></div>
+                    <div style="background: var(--white); padding: 18px; border-radius: 16px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); cursor:pointer;" onclick="openDownloadsPage()"><strong class="translatable" data-en="Downloads" data-hi="डाउनलोड">Downloads</strong><br><small style="color: var(--text-gray);" id="statDownloads">0 PDFs</small></div>
+                    <div style="background: #f3e8ff; padding: 18px; border-radius: 16px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); border: 1px solid #c4b5fd; cursor:pointer;" onclick="switchTab('doubts', document.querySelectorAll('.nav-item')[3])"><strong style="color: #7c3aed;" class="translatable" data-en="AI Doubts" data-hi="एआई डाउट">AI Doubts</strong><br><small style="color: var(--text-gray);" id="statDoubts">0 Questions</small></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="profile-menu">
+            <div class="menu-list">
+                <div class="settings-item" onclick="toggleTheme()"><div class="menu-left"><div class="menu-icon" style="background: rgba(249, 115, 22, 0.1); color: #f97316;"><i class="fas fa-moon"></i></div><span class="translatable" data-en="Dark Mode" data-hi="डार्क मोड">Dark Mode</span></div><div class="toggle-switch" id="themeToggle"></div></div>
+                
+                <!-- NEW: Refer & Earn Button -->
+                <div class="menu-list-item" onclick="openReferPage()">
+                    <div class="menu-left">
+                        <div class="menu-icon" style="background: rgba(16, 185, 129, 0.1); color: #10b981;"><i class="fas fa-gift"></i></div>
+                        <span>Refer & Earn (Free Coins)</span>
+                    </div>
+                    <i class="fas fa-chevron-right" style="color: var(--text-gray);"></i>
+                </div>
+
+                <!-- NEW: Track Payments Button -->
+                <div class="menu-list-item" onclick="openPaymentPage()">
+                    <div class="menu-left">
+                        <div class="menu-icon" style="background: rgba(245, 158, 11, 0.1); color: #f59e0b;"><i class="fas fa-receipt"></i></div>
+                        <span class="translatable" data-en="Track Orders & Payments" data-hi="पेमेंट ट्रैक करें">Track Orders & Payments</span>
+                    </div>
+                    <i class="fas fa-chevron-right" style="color: var(--text-gray);"></i>
+                </div>
+
+                <div class="menu-list-item" onclick="openModal('passwordModal')"><div class="menu-left"><div class="menu-icon" style="background: rgba(234, 88, 12, 0.1); color: #ea580c;"><i class="fas fa-lock"></i></div><span class="translatable" data-en="Change Password" data-hi="पासवर्ड बदलें">Change Password</span></div><i class="fas fa-chevron-right" style="color: var(--text-gray);"></i></div>
+                <div class="menu-list-item" onclick="toggleLanguage()"><div class="menu-left"><div class="menu-icon" style="background: rgba(59, 130, 246, 0.1); color: #3b82f6;"><i class="fas fa-language"></i></div><span class="translatable" data-en="Change Language (Hi/En)" data-hi="भाषा बदलें (Hi/En)">Change Language (Hi/En)</span></div><i class="fas fa-chevron-right" style="color: var(--text-gray);"></i></div>
+                <div class="menu-list-item" id="adminPanelBtn" style="display: none; background: rgba(16, 185, 129, 0.05); border-left: 4px solid #10b981;" onclick="window.location.href='admin.html'">
+                    <div class="menu-left">
+                        <div class="menu-icon" style="background: #10b981; color: white;">
+                            <i class="fas fa-user-shield"></i>
+                        </div>
+                        <span style="color: #10b981; font-weight: 800;" class="translatable" data-en="Admin Dashboard" data-hi="एडमिन डैशबोर्ड">Admin Dashboard</span>
+                    </div>
+                    <i class="fas fa-external-link-alt" style="color: #10b981;"></i>
+                </div>
+            </div>
+        </div>
+        
+        <div class="logout-btn" onclick="logoutUser()"><i class="fas fa-sign-out-alt"></i> <span class="translatable" data-en="Logout" data-hi="लॉगआउट">Logout</span></div>
+    </div>
+
+    <!-- ==================== NEW: REFER & EARN PAGE ==================== -->
+    <div id="referEarnPage" class="tab-content course-player-theme">
+        <div class="course-header-dark" style="background:var(--primary); color:white;">
+            <i class="fas fa-arrow-left" style="cursor: pointer; color:white;" onclick="switchTab('profile', document.querySelectorAll('.nav-item')[4])"></i>
+            <h2 style="color:white;">Refer & Earn</h2>
+        </div>
+        
+        <div style="padding: 20px; padding-bottom: 120px; background: #f8fafc; min-height: 100vh;">
+            <div style="text-align: center; margin-bottom: 25px;">
+                <i class="fas fa-gift" style="font-size:4rem; color:#10b981; margin-bottom:10px;"></i>
+                <p style="font-size:0.9rem; color:var(--text-gray); font-weight:600;">Share your code. You get 250 Coins, your friend gets 500 Coins!</p>
+            </div>
+        
+            <!-- My Code Section -->
+            <div style="background:#fff; padding:20px; border-radius:15px; border:2px dashed #cbd5e1; margin-bottom:20px; text-align: center; box-shadow: 0 4px 10px rgba(0,0,0,0.03);">
+                <p style="font-size:0.8rem; color:#64748b; font-weight:bold;">YOUR REFERRAL CODE</p>
+                <h2 id="myReferralCodeTxt" style="color:#3b82f6; letter-spacing:3px; margin:10px 0; font-size: 2rem;">SK-XXXXX</h2>
+                <button onclick="shareApp()" style="background:#3b82f6; color:white; border:none; padding:12px 25px; border-radius:10px; font-weight:bold; cursor:pointer; font-size:1rem; width: 100%;"><i class="fas fa-share-alt"></i> Share Link with Friends</button>
+            </div>
+
+            <!-- Apply Code Section -->
+            <div id="applyCodeSection" style="background:#fff7ed; padding:20px; border-radius:15px; border:1px solid #fed7aa; margin-bottom:20px; box-shadow: 0 4px 10px rgba(234, 88, 12, 0.05);">
+                <p style="font-size:0.9rem; font-weight:bold; color:#ea580c; margin-bottom:12px;"><i class="fas fa-magic"></i> Have a Referral Code?</p>
+                <div style="display:flex; gap:10px;">
+                    <input type="text" id="enterRefCode" placeholder="Enter Code Here" style="flex:1; padding:12px; border-radius:10px; border:1px solid #fdba74; text-transform:uppercase; font-weight: bold; outline: none;">
+                    <button onclick="applyReferralCode()" style="background:#ea580c; color:white; border:none; padding:12px 20px; border-radius:10px; font-weight:bold; cursor:pointer;">Apply</button>
+                </div>
+            </div>
+
+            <!-- My Team Section -->
+            <h4 style="text-align:left; color:var(--text); margin-bottom:12px; font-size: 1.1rem;"><i class="fas fa-users" style="color:#10b981;"></i> My Team</h4>
+            <div id="myTeamList" style="text-align:left; background:#fff; padding:20px; border-radius:15px; border:1px solid #e2e8f0; min-height:150px; box-shadow: 0 4px 10px rgba(0,0,0,0.03);">
+                <p style="font-size:0.9rem; color:#94a3b8; text-align:center; padding-top: 20px;">Loading team...</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- ==================== NEW: TRACK PAYMENTS PAGE ==================== -->
+    <div id="paymentTrackerPage" class="tab-content course-player-theme">
+        <div class="course-header-dark" style="background:var(--primary); color:white;">
+            <i class="fas fa-arrow-left" style="cursor: pointer; color:white;" onclick="switchTab('profile', document.querySelectorAll('.nav-item')[4])"></i>
+            <h2 style="color:white;">Track Payments</h2>
+        </div>
+        
+        <div style="padding: 15px; padding-bottom: 120px; background: #f8fafc; min-height: 100vh;">
+            <div id="userPaymentHistoryList" style="display: flex; flex-direction: column; gap: 15px;">
+                <!-- यहाँ जावास्क्रिप्ट से पेमेंट लिस्ट आएगी -->
+            </div>
+        </div>
+    </div>
+
+    <!-- ==================== NEW: MY DOWNLOADS LIBRARY PAGE ==================== -->
+    <div id="downloadsPage" class="tab-content course-player-theme">
+        <div class="course-header-dark" style="background:var(--primary); color:white;">
+            <i class="fas fa-arrow-left" style="cursor: pointer; color:white;" onclick="switchTab('profile', document.querySelectorAll('.nav-item')[4])"></i>
+            <h2 style="color:white;">My Downloads</h2>
+        </div>
+        
+        <div style="padding: 15px; padding-bottom: 120px; background: #f8fafc; min-height: 100vh;">
+            <div id="downloadedPdfsList" style="display: flex; flex-direction: column; gap: 15px;">
+                <!-- यहाँ जावास्क्रिप्ट से डाउनलोड की गई PDF की लिस्ट आएगी -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Bottom Navigation -->
+    <nav class="bottom-nav" id="bottomNav" style="display: none;">
+        <div class="nav-item active" onclick="switchTab('home', this)"><i class="fas fa-home"></i><span class="translatable" data-en="HOME" data-hi="होम">HOME</span></div>
+        <div class="nav-item" onclick="switchTab('courses', this, 'purchased')"><i class="fas fa-graduation-cap"></i><span class="translatable" data-en="MY COURSES" data-hi="मेरे कोर्सेज">MY COURSES</span></div>
+        <div class="nav-item" onclick="switchTab('test', this, 'purchased')"><i class="fas fa-clipboard-check"></i><span class="translatable" data-en="MY TESTS" data-hi="मेरे टेस्ट्स">MY TESTS</span></div>
+        <div class="nav-item" onclick="switchTab('doubts', this)"><i class="fas fa-robot"></i><span class="translatable" data-en="AI SOLVER" data-hi="एआई सॉल्वर">AI SOLVER</span></div>
+        <div class="nav-item" onclick="switchTab('profile', this)"><i class="fas fa-user"></i><span class="translatable" data-en="PROFILE" data-hi="प्रोफाइल">PROFILE</span></div>
+    </nav>
+
+    <!-- Modals -->
+    <div id="passwordModal" class="modal-overlay">
+        <div class="modal-box">
+            <i class="fas fa-times close-modal" onclick="closeModal('passwordModal')"></i>
+            <h3 class="modal-title translatable" data-en="Change Password" data-hi="पासवर्ड बदलें">Change Password</h3>
+            <div class="input-group"><label class="translatable" data-en="Old Password" data-hi="पुराना पासवर्ड">Old Password</label><input type="password" id="profileOldPass" placeholder="*****"></div>
+            <div class="input-group"><label class="translatable" data-en="New Password" data-hi="नया पासवर्ड">New Password</label><input type="password" id="profileNewPass" placeholder="*****"></div>
+            <button class="btn-primary translatable" data-en="Update Password" data-hi="अपडेट करें" onclick="changePasswordUI()">Update Password</button>
+        </div>
+    </div>
+
+    <!-- Edit Profile Modal -->
+    <div id="editProfileModal" class="modal-overlay">
+        <div class="modal-box">
+            <i class="fas fa-times close-modal" onclick="closeModal('editProfileModal')"></i>
+            <h3 class="modal-title translatable" data-en="Edit Profile" data-hi="प्रोफाइल अपडेट करें">Edit Profile</h3>
+            <div class="input-group"><label class="translatable" data-en="Full Name" data-hi="पूरा नाम">Full Name</label><input type="text" id="editProfileName" placeholder="Enter your name"></div>
+            <div class="input-group"><label class="translatable" data-en="Mobile Number" data-hi="मोबाइल नंबर">Mobile Number</label><input type="tel" id="editProfilePhone" placeholder="Enter mobile number"></div>
+            <div class="input-group"><label class="translatable" data-en="Profile Photo (Gallery)" data-hi="प्रोफाइल फोटो (गैलरी से)">Profile Photo</label><input type="file" id="editProfilePicFile" accept="image/*" style="background: var(--white); padding: 8px; cursor: pointer;"></div>
+            <button class="btn-primary translatable" data-en="Save Changes" data-hi="बदलाव सेव करें" onclick="saveProfileChanges()">Save Changes</button>
+        </div>
+    </div>
+
+    <!-- ==================== EXAM INSTRUCTIONS PAGE ==================== -->
+    <div id="examInstructionPage" class="exam-instruction-wrapper">
+        <div class="instruction-header">
+            <i class="fas fa-arrow-left" style="font-size: 1.2rem; cursor: pointer;" onclick="document.getElementById('examInstructionPage').style.display='none'"></i>
+            <h2 id="instTestTitle">Test Instructions</h2>
+        </div>
+        <div class="instruction-body">
+            <div class="inst-box">
+                <div class="inst-title"><i class="fas fa-clipboard-list" style="color:var(--primary);"></i> General Instructions</div>
+                <ul class="inst-list">
+                    <li>This test contains multiple-choice questions.</li>
+                    <li>Each correct answer carries <strong>+2.0 marks</strong>.</li>
+                    <li>There is a negative marking of <strong>-0.5 marks</strong> for each wrong answer.</li>
+                    <li>You cannot pause the test once started.</li>
+                    <li>Do not close the app or switch tabs while taking the test.</li>
+                </ul>
+            </div>
+            <div class="lang-selector-box">
+                <div><strong style="color: var(--text); font-size: 1rem; display:block;">Choose your default language</strong><span style="font-size: 0.8rem; color: #64748b;">(आप इसे टेस्ट के बीच में भी बदल सकते हैं)</span></div>
+                <select id="examLangSelect"><option value="hi">हिंदी (Hindi)</option><option value="en">English</option></select>
+            </div>
+            <div style="margin-top: 20px; font-size: 0.8rem; color: #ef4444; font-weight: 600; text-align: center;"><i class="fas fa-exclamation-triangle"></i> Please read all instructions carefully before starting.</div>
+        </div>
+        <div class="start-exam-footer">
+            <button class="btn-start-exam" onclick="proceedToTest()">I am ready to begin <i class="fas fa-arrow-right"></i></button>
+        </div>
+    </div>
+
+    <!-- ==================== EXAM ENGINE (FULL SCREEN PLAYER) ==================== -->
+    <div id="examEnginePage" class="exam-engine-wrapper">
+        <div class="exam-header">
+            <h3 id="examTestTitle">Mock Test 1</h3>
+            <div style="display:flex; align-items:center; gap:15px;">
+                <div class="exam-timer-box"><i class="fas fa-stopwatch"></i> <span id="examTimerDisplay">00:00</span></div>
+                <button class="exam-submit-btn" onclick="if(confirm('Are you sure you want to submit the test?')) submitRealExam();">Submit</button>
+            </div>
+        </div>
+        <div class="exam-body">
+            <div class="question-header">
+                <span class="q-no-badge">Question <span id="examQNo">1</span></span>
+                <span class="q-marks"><i class="fas fa-check-circle"></i> +2.0  &nbsp;|&nbsp;  <i class="fas fa-times-circle" style="color:#ef4444;"></i> -0.5</span>
+            </div>
+            <div class="question-text" id="examQuestionText">Loading Question...</div>
+            <div class="exam-options-area" id="examOptionsArea"></div>
+        </div>
+        <div class="exam-footer">
+            <button class="exam-nav-btn btn-prev" id="btnExamPrev" onclick="prevQuestion()"><i class="fas fa-chevron-left"></i> Prev</button>
+            <button class="exam-nav-btn btn-next" id="btnExamNext" onclick="nextQuestion()">Save & Next <i class="fas fa-chevron-right"></i></button>
+        </div>
+    </div>
+
+    <!-- ==================== EXAM RESULT & ANSWER KEY PAGE ==================== -->
+    <div id="examResultPage" class="exam-result-wrapper">
+        <div class="result-card" id="resultCardMain">
+            <i class="fas fa-trophy result-trophy"></i>
+            <h2 class="result-title">Test Completed!</h2>
+            <p style="color: var(--text-gray); font-weight:600; margin-bottom:10px;">Your Total Score</p>
+            <div class="result-score" id="resTotalScore">0 / 0</div>
+            <div class="result-stats-grid">
+                <div class="r-stat-box" style="border-bottom: 3px solid #10b981;"><h4 style="color: #10b981;" id="resCorrect">0</h4><p>Correct</p></div>
+                <div class="r-stat-box" style="border-bottom: 3px solid #ef4444;"><h4 style="color: #ef4444;" id="resWrong">0</h4><p>Wrong</p></div>
+                <div class="r-stat-box" style="border-bottom: 3px solid #94a3b8;"><h4 style="color: #94a3b8;" id="resSkipped">0</h4><p>Skipped</p></div>
+                <div class="r-stat-box" style="border-bottom: 3px solid #f59e0b;"><h4 style="color: #f59e0b;" id="resAccuracy">0%</h4><p>Accuracy</p></div>
+            </div>
+            <button class="btn-home" style="background: var(--primary); margin-bottom: 10px;" onclick="showTestAnswerKey()"><i class="fas fa-list-check"></i> View Answer Key</button>
+            <button class="btn-home" style="background: #334155; color: #ffffff; border: 1px solid #475569;" onclick="closeExamEngine()"><i class="fas fa-home"></i> Return to Dashboard</button>
+        </div>
+        <div id="answerKeyContainer" style="display: none; width: 100%; max-width: 600px; height: 90vh; background: var(--white); border-radius: 20px; overflow-y: auto; padding: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.2);">
+            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #eee; padding-bottom: 15px; margin-bottom: 20px; position: sticky; top: 0; background: var(--white); z-index: 10;">
+                <h3 style="color: var(--text); font-weight: 800;"><i class="fas fa-key" style="color: #f59e0b;"></i> Answer Key</h3>
+                <i class="fas fa-times" style="font-size: 1.5rem; color: #ef4444; cursor: pointer;" onclick="document.getElementById('answerKeyContainer').style.display='none'; document.getElementById('resultCardMain').style.display='block';"></i>
+            </div>
+            <div id="answerKeyList"></div>
+        </div>
+    </div>
+
+    <!-- PAYMENT QR MODAL -->
+    <div id="paymentModal" class="modal-overlay" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.8); z-index:99999; justify-content:center; align-items:center;">
+        <div class="modal-box" style="background:var(--white); padding:30px; border-radius:20px; text-align:center; width:90%; max-width:400px; position:relative;">
+            <i class="fas fa-times" style="position:absolute; top:15px; right:15px; font-size:1.5rem; color:red; cursor:pointer;" onclick="closeModal('paymentModal')"></i>
+            <h3 style="margin-bottom:15px;">Pay via UPI</h3>
+            <img src="qr.jpg" style="width:200px; height:200px; border-radius:10px; border:2px solid #3b82f6; margin-bottom:10px;">
+            <h2 style="color:#10b981; margin-bottom:10px;" id="payAmountTxt">₹0</h2>
+            <a id="upiDirectLink" href="#" style="display:flex; align-items:center; gap:15px; background:#f8fafc; border:1px solid #e2e8f0; padding:12px 15px; border-radius:12px; text-decoration:none; color:var(--text); margin-bottom:15px; text-align:left;">
+                <div style="background:#f1f5f9; color:#475569; width:40px; height:40px; border-radius:8px; display:flex; justify-content:center; align-items:center; font-size:1.2rem;"><i class="fas fa-forward"></i></div>
+                <div style="flex:1;"><h4 style="margin:0; font-size:1.05rem; display:flex; align-items:center; gap:8px;">UPI <i class="fab fa-google-pay" style="color:#4285F4; font-size:1.2rem;"></i> <span style="color:#5f259f; font-weight:900; font-style:italic;">Pe</span></h4><span style="font-size:0.75rem; color:var(--text-gray);">GooglePay, Paytm, PhonePe & More</span></div>
+            </a>
+            <div style="display:flex; align-items:center; margin-bottom:15px;"><hr style="flex:1; border:none; border-top:1px solid #e2e8f0;"><span style="padding:0 10px; color:#94a3b8; font-size:0.75rem; font-weight:bold;">OR SCAN QR</span><hr style="flex:1; border:none; border-top:1px solid #e2e8f0;"></div>
+            <p style="font-size:0.8rem; color:#666; margin-bottom:15px;">Pay the exact amount. Then enter 12-digit UTR below.</p>
+            <input type="number" id="utrNumber" placeholder="Enter 12-digit UTR No." style="width:100%; padding:12px; border-radius:10px; border:1px solid #ccc; margin-bottom:15px;">
+            <button class="btn-primary" onclick="submitManualPayment()" style="width:100%;">Submit Payment</button>
+        </div>
+    </div>
+
+    <!-- EmailJS SDK -->
+    <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@3/dist/email.min.js"></script>
+
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-storage-compat.js"></script>
+    
+    <!-- JS File Link -->
+    <script src="js/config.js"></script>
+    <script src="js/ui.js"></script>
+    <script src="js/user.js"></script>
+    <script src="js/store.js"></script>
+    <script src="js/features.js"></script>
+    <script src="js/auth.js"></script>
+    <script src="js/main.js"></script>
+    <script src="js/ai.js"></script> 
+
+</body>
+</html>

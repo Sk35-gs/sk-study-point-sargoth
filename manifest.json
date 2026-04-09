@@ -1,0 +1,21 @@
+{
+  "name": "SK STUDY POINT SARGOTH",
+  "short_name": "SK STUDY POINT",
+  "description": "Premium Study Material App",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#8b5cf6",
+  "theme_color": "#6c42d1",
+  "icons": [
+    {
+      "src": "logo.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "logo.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
