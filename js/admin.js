@@ -122,7 +122,7 @@ async function fetchAllRealData() {
 
     // PART B: यूज़र्स, टेस्ट्स और QoD (Question of the Day) लोड करना
     try {
-        const usersSnap = await db.collection("users").orderBy("joinedDate", "desc").limit(100).get();
+        const usersSnap = await db.collection("users").get();
         let totalRealTestsCount = 0; let totalQodCount = 0; 
         let studentHtml = ''; let qodHtml = ''; 
 
@@ -175,7 +175,8 @@ async function fetchAllRealData() {
         document.getElementById('statRealTests').innerHTML = `${totalRealTestsCount} <span>Real</span>`;
         document.getElementById('statQoD').innerHTML = `${totalQodCount} <span>Real</span>`;
         
-        if(studentHtml) document.getElementById('studentTableBody').innerHTML = studentHtml;
+        // यहाँ बदलाव किया गया है 👇
+        document.getElementById('studentTableBody').innerHTML = studentHtml || '<tr><td colspan="3" style="text-align:center; color:#94a3b8;">अभी तक किसी छात्र ने रजिस्टर नहीं किया है।</td></tr>';
         document.getElementById('qodLogsBody').innerHTML = qodHtml || '<tr><td colspan="3">No QoD attempted yet.</td></tr>';
         
         // AI के सवाल भी लोड करें
