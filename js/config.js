@@ -22,16 +22,17 @@ const firebaseConfig = {
 firebase.initializeApp(firebaseConfig);
 const db = firebase.firestore();
 
-// 👇 OFFLINE DATABASE LOGIC 👇
-db.enablePersistence()
+// 👇 OFFLINE DATABASE LOGIC (MULTI-TAB SUPPORTED) 👇
+db.enablePersistence({ synchronizeTabs: true })
   .catch((err) => {
       if (err.code == 'failed-precondition') {
-          console.log("Multiple tabs open, offline mode works only in one.");
+          console.log("Multiple tabs open, multi-tab persistence failed.");
       } else if (err.code == 'unimplemented') {
           console.log("Browser doesn't support offline data.");
       }
   });
 
+  
 /* -------------------------------------------------------------------------- */
 /* 2. GLOBAL STATE VARIABLES                                                  */
 /* -------------------------------------------------------------------------- */
