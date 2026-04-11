@@ -106,7 +106,7 @@ function initUserData() {
     
     document.getElementById('statCourses').innerText = courseCount + " Active";
     document.getElementById('statTestsPurchased').innerText = testCount + " Purchased";
-    document.getElementById('statDoubts').innerText = (user.stats.aiDoubts || 0) + " Questions";
+    
     document.getElementById('statDownloads').innerText = (user.stats.offlineDownloads || 0) + " PDFs";
 
     // 7. Hide Splash Screens and Show App Layout
@@ -317,12 +317,13 @@ async function applyReferralCode() {
 
 // user.js के अंत में इसे डालें (पुराने पेमेंट और रेफर फंक्शन्स को रिप्लेस करें)
 
-// 1. Payment Page Logic
+// user.js के अंदर इसे बदलें
+
+// 1. Payment Page Logic (With Clear History Feature)
 window.openPaymentPage = async function() {
     let user = getUserData();
     if(!user) return;
     
-    // सारे टैब छुपाएं और पेमेंट पेज दिखाएं
     document.querySelectorAll('.tab-content').forEach(tab => tab.classList.remove('active'));
     document.getElementById('paymentTrackerPage').classList.add('active');
     window.scrollTo(0, 0);
@@ -333,9 +334,15 @@ window.openPaymentPage = async function() {
     try {
         const snap = await db.collection("payments").where("uid", "==", user.uid).get();
         let paymentsArray = [];
-        snap.forEach(doc => paymentsArray.push(doc.data()));
+        
+        snap.forEach(doc => {
+            let data = doc.data();
+            // 🔥 FIX: अगर यूज़र ने हिस्ट्री डिलीट कर दी है (hiddenFromUser: true), तो उसे ऐप में मत दिखाओ
+            if(data.hiddenFromUser !== true) {
+                paymentsArray.push({ id: doc.id, ...data });
+            }
+        });
 
-        // Sort by time
         paymentsArray.sort((a, b) => {
             let timeA = a.timestamp ? a.timestamp.toMillis() : 0;
             let timeB = b.timestamp ? b.timestamp.toMillis() : 0;
@@ -343,14 +350,22 @@ window.openPaymentPage = async function() {
         });
 
         let html = '';
+        
+        // 🔥 FIX: ऊपर एक Clear History बटन लगा दिया है
+        if(paymentsArray.length > 0) {
+            html += `<div style="text-align:right; margin-bottom:15px;">
+                        <button onclick="clearMyPaymentHistory()" style="background:rgba(239, 68, 68, 0.1); color:#ef4444; border:1px solid #ef4444; padding:6px 12px; border-radius:8px; font-weight:bold; cursor:pointer;"><i class="fas fa-trash-alt"></i> Clear Old History</button>
+                     </div>`;
+        }
+
         paymentsArray.forEach(data => {
             let dateStr = data.date || "N/A";
             let statusColor = data.status === 'Pending' ? '#f59e0b' : (data.status === 'Approved' ? '#10b981' : '#ef4444');
             let statusIcon = data.status === 'Pending' ? 'fa-clock' : (data.status === 'Approved' ? 'fa-check-circle' : 'fa-times-circle');
-            let items = data.items ? data.items.map(i => i.title).join(', ') : "Course/Test";
+            let items = data.items && data.items.length > 0 ? data.items.map(i => i.title).join(', ') : "Course/Test";
 
             html += `
-            <div style="background: var(--white); padding: 20px; border-radius: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.04); border-left: 5px solid ${statusColor};">
+            <div style="background: var(--white); padding: 20px; border-radius: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.04); border-left: 5px solid ${statusColor}; margin-bottom:15px;">
                 <div style="display:flex; justify-content:space-between; margin-bottom:10px;">
                     <span style="font-size:0.8rem; color:var(--text-gray); font-weight:600;">${dateStr}</span>
                     <span style="color:${statusColor}; font-size:0.9rem; font-weight:800;"><i class="fas ${statusIcon}"></i> ${data.status}</span>
@@ -367,7 +382,28 @@ window.openPaymentPage = async function() {
     }
 };
 
+// 🔥 NEW FUNCTION: यूज़र के ऐप से हिस्ट्री हटाने का लॉजिक (एडमिन पैनल में रहेगी)
+window.clearMyPaymentHistory = async function() {
+    let user = getUserData();
+    if(!confirm("क्या आप अपनी पेमेंट हिस्ट्री ऐप से हटाना चाहते हैं?")) return;
+
+    try {
+        const snap = await db.collection("payments").where("uid", "==", user.uid).get();
+        // सभी पेमेंट्स को यूज़र के लिए 'hide' कर दो
+        snap.forEach(doc => {
+            db.collection("payments").doc(doc.id).update({ hiddenFromUser: true });
+        });
+        
+        showToast("History cleared from your app!", "success");
+        openPaymentPage(); // पेज को रिफ्रेश करें
+    } catch (e) {
+        showToast("Error clearing history.", "error");
+    }
+};
+
 // 2. Refer & Earn Page Logic
+// user.js के अंदर इसे बदलें
+
 window.openReferPage = async function() {
     let user = getUserData();
     if(!user) return;
@@ -377,7 +413,17 @@ window.openReferPage = async function() {
     document.getElementById('referEarnPage').classList.add('active');
     window.scrollTo(0, 0);
 
-    let myCode = user.myReferralCode || "SK" + user.uid.substring(0,5).toUpperCase();
+    // 🔥 FIX: अगर यूज़र के पास डेटाबेस में रेफरल कोड नहीं है, तो उसे बनाकर सेव कर दो
+    let myCode = user.myReferralCode;
+    if (!myCode) {
+        myCode = "SK" + user.uid.substring(0,5).toUpperCase();
+        user.myReferralCode = myCode;
+        
+        // डेटाबेस में तुरंत सेव करें ताकि दूसरे लोग इसे ढूँढ़ सकें
+        await db.collection("users").doc(user.uid).update({ myReferralCode: myCode });
+        saveUserData(user); // लोकल स्टोरेज में भी सेव करें
+    }
+
     document.getElementById('myReferralCodeTxt').innerText = myCode;
 
     // अगर पहले से कोड डाल चुका है, तो Apply वाला डब्बा छुपा दो

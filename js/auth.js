@@ -71,34 +71,12 @@ async function sendOtp(context) {
     if(!isValidEmail(email)) { showToast("कृपया सही ईमेल डालें!", 'error'); return; }
     if(phone.length < 10) { showToast("सही मोबाइल नंबर डालें!", 'error'); return; }
 
-    btnElement.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Checking...';
+    // Firebase Permission Error से बचने के लिए सीधा OTP भेजने का प्रोसेस
+    btnElement.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Sending...';
     btnElement.disabled = true;
 
     try {
-        // Step 1: Check if Phone Number is already registered
-        let phoneStr = phone.replace(/\s/g, '');
-        if(phoneStr.length === 10) phoneStr = '+91' + phoneStr; 
-        
-        const phoneCheck = await db.collection("users").where("phone", "==", phoneStr).get();
-        if(!phoneCheck.empty) {
-            showToast("यह मोबाइल नंबर पहले से रजिस्टर्ड है!", 'error');
-            btnElement.innerHTML = "Send OTP to Email";
-            btnElement.disabled = false; 
-            return;
-        }
-
-        // Step 2: Check if Email is already registered
-        let methods = await firebase.auth().fetchSignInMethodsForEmail(email);
-        if(methods.length > 0) {
-            showToast("यह ईमेल पहले से रजिस्टर्ड है!", 'error');
-            btnElement.innerHTML = "Send OTP to Email";
-            btnElement.disabled = false; 
-            return;
-        }
-
-        // Step 3: Send OTP via EmailJS
         tempOtp = generateOTP(); 
-        btnElement.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Sending...';
         
         let templateParams = { 
             to_email: email, 
@@ -106,6 +84,8 @@ async function sendOtp(context) {
             otp_code: tempOtp, 
             app_name: "SK STUDY POINT" 
         };
+        
+        // EmailJS से OTP भेजना
         await emailjs.send(EMAILJS_SERVICE_ID, EMAILJS_TEMPLATE_ID, templateParams);
         
         showToast("OTP आपके ईमेल पर भेज दिया गया है!", 'success');
@@ -114,6 +94,7 @@ async function sendOtp(context) {
         btnElement.innerText = "OTP दोबारा भेजें";
 
     } catch (error) {
+        console.error("EmailJS Error:", error);
         showToast("OTP भेजने में समस्या आई।", "error");
         btnElement.innerText = "Send OTP to Email";
     } finally { 
@@ -183,7 +164,7 @@ async function processSignup() {
                 avgScore: 0, 
                 streakDays: 0, 
                 globalRank: 0, 
-                aiDoubts: 0, 
+                 
                 offlineDownloads: 0, 
                 coins: 0 
             },

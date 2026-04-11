@@ -108,7 +108,7 @@ body {
 .icon-test { background: rgba(22, 163, 74, 0.12); color: #16a34a; }
 .icon-syllabus { background: rgba(245, 158, 11, 0.15); color: #ea580c; }
 .icon-cart { background: rgba(192, 38, 211, 0.12); color: #c026d3; }
-.icon-ai { background: rgba(2, 132, 199, 0.12); color: #0284c7; }
+.icon-web { background: rgba(2, 132, 199, 0.12); color: #0284c7; }
 
 .live-dot { position: absolute; top: 12px; right: 15px; width: 10px; height: 10px; background: #ef4444; border-radius: 50%; box-shadow: 0 0 10px #ef4444; animation: pulse 1.5s infinite; z-index: 5;}
 @keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); } 70% { box-shadow: 0 0 0 8px rgba(239, 68, 68, 0); } 100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); } }
@@ -206,17 +206,6 @@ body {
 .checkout-box { position: fixed; bottom: 90px; left: 0; width: 100%; background: var(--white); padding: 20px; box-shadow: 0 -5px 20px rgba(0,0,0,0.1); border-top-left-radius: 25px; border-top-right-radius: 25px; z-index: 90;}
 .cart-badge { position: absolute; top: -5px; right: -5px; background: #ef4444; color: white; border-radius: 50%; font-size: 10px; width: 18px; height: 18px; display: flex; align-items: center; justify-content: center; font-weight: bold; box-shadow: 0 2px 5px rgba(0,0,0,0.2); display: none; }
 
-.chat-area { height: calc(100vh - 80px); padding: 20px 20px 150px; overflow-y: auto; display: flex; flex-direction: column; gap: 15px; }
-.msg { max-width: 80%; padding: 12px 16px; border-radius: 18px; font-size: 0.9rem; line-height: 1.4; }
-.msg-ai { background: var(--white); color: var(--text); border-bottom-left-radius: 5px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); align-self: flex-start; }
-.msg-user { background: var(--primary); color: white; border-bottom-right-radius: 5px; align-self: flex-end; }
-
-.chat-input-wrapper { position: fixed; bottom: 90px; left: 0; width: 100%; display: flex; justify-content: center; z-index: 90; pointer-events: none; }
-.chat-input { width: 92%; max-width: 600px; padding: 6px 8px; background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(10px); display: flex; align-items: center; gap: 8px; border-radius: 35px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); border: 1px solid rgba(0,0,0,0.05); pointer-events: auto; box-sizing: border-box; }
-.chat-input input { flex: 1; min-width: 0; padding: 12px 15px; border-radius: 25px; border: none; outline: none; background: var(--bg); color: var(--text); font-size: 0.9rem; }
-.chat-input button { width: 42px; height: 42px; border-radius: 50%; background: var(--primary); color: white; border: none; cursor: pointer; box-shadow: 0 4px 10px rgba(139, 92, 246, 0.3); flex-shrink: 0; display: flex; justify-content: center; align-items: center; font-size: 1.1rem; margin-right: 2px; transition: 0.2s;}
-.chat-input button:disabled { opacity: 0.6; cursor: not-allowed; }
-
 [data-theme="dark"] .menu-list-item { border-bottom-color: #334155; }
 [data-theme="dark"] .logout-btn { background: #450a0a; color: #f87171; border-color: #b91c1c; }
 [data-theme="dark"] .news-ticker { border-color: var(--dark-border); }
@@ -230,8 +219,7 @@ body {
 [data-theme="dark"] .page-header { background: #1e293b; border-bottom: 1px solid #334155;}
 [data-theme="dark"] .input-group input, [data-theme="dark"] .auth-input-group input, [data-theme="dark"] .auth-input-group select { border-color: #334155; }
 [data-theme="dark"] .checkout-box { background: var(--dark-card); }
-[data-theme="dark"] .msg-ai { background: var(--dark-card); }
-[data-theme="dark"] .chat-input { background: rgba(30, 41, 59, 0.95); border-color: var(--dark-border); }
+
 
 .category-toast, .app-toast { display: none; background: #10b981; color: white; padding: 10px 20px; border-radius: 20px; font-size: 0.9rem; font-weight: 600; position: fixed; z-index: 2000; box-shadow: 0 5px 15px rgba(0,0,0,0.2); animation: fadeInUp 0.3s ease; }
 .category-toast { bottom: 90px; left: 50%; transform: translateX(-50%); background: var(--text); }
@@ -795,34 +783,26 @@ body {
     z-index: 10;
 }
 /* ========================================================= */
-/* 🛡️ YOUTUBE PIRACY SHIELDS & CUSTOM CONTROLS               */
+/* 🛡️ YOUTUBE PIRACY SHIELD & CUSTOM CONTROLS (100% SECURE)  */
 /* ========================================================= */
 
-/* ऊपर का हिस्सा ब्लॉक करेगा (Title, Share, Watch Later) */
-.yt-shield-top {
+/* यह पूरे वीडियो को कवर करेगा ताकि YouTube का कोई लिंक क्लिक न हो सके */
+.yt-full-shield {
     position: absolute;
     top: 0; left: 0;
-    width: 100%; height: 65px;
+    width: 100%; height: 100%;
     background: transparent;
     z-index: 10;
+    cursor: pointer;
 }
 
-/* नीचे दायें कोने को ब्लॉक करेगा (YouTube Watermark Logo) */
-.yt-shield-bottom-right {
-    position: absolute;
-    bottom: 0; right: 0;
-    width: 120px; height: 50px;
-    background: transparent;
-    z-index: 10;
-}
-
-/* 10s आगे-पीछे वाले बटन की डिज़ाइन */
 .custom-video-controls {
     display: flex;
     justify-content: center;
-    gap: 30px;
+    align-items: center;
+    gap: 20px;
     padding: 12px;
-    background: #0f172a; /* डार्क बैकग्राउंड */
+    background: #0f172a;
     border-bottom: 1px solid #334155;
 }
 
@@ -830,14 +810,11 @@ body {
     background: rgba(59, 130, 246, 0.2);
     color: #3b82f6;
     border: 1px solid #3b82f6;
-    padding: 8px 25px;
+    padding: 8px 20px;
     border-radius: 20px;
     font-weight: 800;
     font-size: 0.95rem;
     cursor: pointer;
-    display: flex;
-    align-items: center;
-    gap: 8px;
     transition: 0.2s;
 }
 
@@ -845,4 +822,158 @@ body {
     transform: scale(0.92);
     background: #3b82f6;
     color: white;
+}
+
+/* बीच वाले गोल Play/Pause बटन की डिज़ाइन */
+.play-pause-btn {
+    background: #ef4444;
+    color: white;
+    border: none;
+    border-radius: 50%;
+    width: 45px;
+    height: 45px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-size: 1.2rem;
+    padding: 0;
+}
+/* ========================================================= */
+/* 🛡️ PREMIUM YOUTUBE PLAYER UI (CLEAN & SECURE)             */
+/* ========================================================= */
+
+.video-player-wrapper {
+    position: sticky;
+    top: 0;
+    z-index: 101;
+    width: 100%;
+    background: var(--bg);
+    box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+}
+
+.premium-video-container {
+    position: relative;
+    width: 100%;
+    aspect-ratio: 16 / 9; /* यह काली पट्टी नहीं आने देगा, एकदम परफेक्ट स्क्रीन देगा */
+    background: #000;
+}
+
+.premium-video-container iframe {
+    position: absolute;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    pointer-events: none; /* 🔥 YouTube के सारे क्लिक ब्लॉक कर देगा */
+}
+
+/* अदृश्य शील्ड */
+.yt-glass-shield {
+    position: absolute;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    z-index: 10;
+    cursor: pointer;
+    background: transparent;
+}
+
+/* 10s आगे-पीछे वाले बटन्स का बैकग्राउंड */
+.premium-video-controls {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 30px;
+    padding: 15px 20px;
+    background: #0f172a; /* गहरा नीला रंग जो आपके ऐप पर जचेगा */
+}
+
+/* बटन्स की डिज़ाइन */
+.vid-btn {
+    background: rgba(59, 130, 246, 0.15);
+    color: #3b82f6;
+    border: 1px solid rgba(59, 130, 246, 0.4);
+    padding: 8px 20px;
+    border-radius: 20px;
+    font-weight: 700;
+    font-size: 0.95rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.vid-btn:active {
+    background: #3b82f6;
+    color: white;
+    transform: scale(0.95);
+}
+
+/* बीच वाले Play/Pause बटन की डिज़ाइन */
+.vid-btn.play-main {
+    background: #ef4444;
+    color: white;
+    border: none;
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+    font-size: 1.3rem;
+    justify-content: center;
+    padding: 0;
+    box-shadow: 0 4px 15px rgba(239, 68, 68, 0.4);
+}
+
+.vid-btn.play-main:active {
+    background: #dc2626;
+}
+/* ========================================================= */
+/* 📱 PC & MOBILE RESPONSIVE UI FOR APP (SIMULATOR EFFECT)   */
+/* ========================================================= */
+
+/* PC के लिए बैकग्राउंड (ताकि खाली जगह अच्छी दिखे) */
+html {
+    background-color: #cbd5e1;
+    background-image: radial-gradient(#94a3b8 1px, transparent 1px);
+    background-size: 20px 20px;
+}
+
+/* जब स्क्रीन बड़ी हो (PC/Laptop), तो ऐप को मोबाइल फ्रेम जैसा दिखाएं */
+@media (min-width: 500px) {
+    body {
+        margin-top: 20px !important;
+        margin-bottom: 20px !important;
+        border-radius: 35px;
+        border: 10px solid #1e293b; /* मोबाइल का काला बॉर्डर */
+        height: calc(100vh - 40px);
+        overflow-y: auto;
+        box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+    }
+    
+    /* PC पर स्क्रॉलबार को पतला और सुंदर बनाना */
+    body::-webkit-scrollbar { width: 6px; }
+    body::-webkit-scrollbar-track { background: transparent; }
+    body::-webkit-scrollbar-thumb { background: var(--primary); border-radius: 10px; }
+
+    
+    /* Bottom Nav को फोन के काले बॉर्डर के बिल्कुल अंदर चिपकाना (Pixel Perfect) */
+    .bottom-nav {
+        position: fixed !important;
+        bottom: 30px !important; /* 20px मार्जिन + 10px फोन का बॉर्डर = एकदम सटीक फिट */
+        left: 50% !important;
+        transform: translateX(-50%) !important;
+        width: calc(100% - 20px) !important; /* दोनों तरफ के 10-10px बॉर्डर हटाकर */
+        max-width: 460px !important;
+        border-bottom-left-radius: 22px !important;
+        border-bottom-right-radius: 22px !important;
+        border-top-left-radius: 25px !important;
+        border-top-right-radius: 25px !important;
+        z-index: 9999 !important;
+    }
+}
+
+/* जब फोन बहुत छोटा हो (जैसे पुराना iPhone), तो ग्रिड सेट करना */
+@media (max-width: 380px) {
+    .grid-4col { grid-template-columns: repeat(3, 1fr); gap: 8px; }
+    .grid-container { grid-template-columns: repeat(2, 1fr); gap: 10px; }
+    .css-logo { width: 40px; height: 40px; font-size: 1rem; }
+    .pro-icon { width: 40px; height: 40px; font-size: 1.1rem; }
+    .exam-item span, .menu-item span { font-size: 0.65rem; }
 }

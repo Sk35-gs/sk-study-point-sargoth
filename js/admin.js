@@ -151,14 +151,17 @@ async function fetchAllRealData() {
                 </td>
             </tr>`;
 
-            // 2. QoD एनालिटिक्स टेबल
-            if(userQodCount > 0) {
-                let coins = user.stats ? user.stats.coins : 0;
-                qodHtml += `<tr>
-                    <td><strong style="color:white;">${user.name || 'Student'}</strong><br><span style="font-size:0.75rem; color:var(--text-gray);">${user.email}</span></td>
-                    <td><span style="background:rgba(168, 85, 247, 0.1); color:#a855f7; padding:4px 10px; border-radius:6px; font-weight:bold;">${userQodCount} Solved</span></td>
-                    <td><strong style="color:#f59e0b;"><i class="fas fa-coins"></i> ${coins} Coins</strong></td>
-                </tr>`;
+           // 2. QoD एनालिटिक्स टेबल (Detailed Logging)
+            if(user.qodLogs && user.qodLogs.length > 0) {
+                user.qodLogs.forEach(log => {
+                    let coinColor = log.earnedCoins > 0 ? '#10b981' : (log.earnedCoins < 0 ? '#ef4444' : '#94a3b8');
+                    let sign = log.earnedCoins > 0 ? '+' : '';
+                    qodHtml += `<tr>
+                        <td><strong style="color:white;">${user.name}</strong><br><span style="font-size:0.75rem; color:var(--text-gray);">${user.phone || user.email}</span></td>
+                        <td><span style="background:rgba(255,255,255,0.1); padding:4px 8px; border-radius:4px; font-size:0.8rem;">${log.date}</span></td>
+                        <td><strong style="color:${coinColor};">${sign}${log.earnedCoins} Coins</strong> <span style="font-size:0.7rem; color:gray;">(${log.status})</span></td>
+                    </tr>`;
+                });
             }
                     // Test Logs Live Data
             if(user.testLogs && user.testLogs.length > 0) {
@@ -179,8 +182,7 @@ async function fetchAllRealData() {
         document.getElementById('studentTableBody').innerHTML = studentHtml || '<tr><td colspan="3" style="text-align:center; color:#94a3b8;">अभी तक किसी छात्र ने रजिस्टर नहीं किया है।</td></tr>';
         document.getElementById('qodLogsBody').innerHTML = qodHtml || '<tr><td colspan="3">No QoD attempted yet.</td></tr>';
         
-        // AI के सवाल भी लोड करें
-        loadAIDoubts();
+        
     } catch(e) { console.error("User Load Error:", e); }
 }
 
@@ -852,47 +854,46 @@ async function editTest(testId) {
 // 👨‍🎓 स्टूडेंट्स मैनेजमेंट (Student Profile & Block/Unblock)
 // =========================================================================
 
-// स्टूडेंट की पूरी कुंडली (प्रोफाइल) खोलना
+let currentEditingStudentUid = null;
+
 function openStudentKundali(encodedUserStr, uid) {
     let user = JSON.parse(decodeURIComponent(encodedUserStr));
-    document.getElementById('stuModalMyCode').innerText = user.myReferralCode || "Not Generated";
+    currentEditingStudentUid = uid;
+
+    document.getElementById('editStuName').value = user.name || 'Unknown Student';
+    document.getElementById('stuModalEmail').innerText = user.email || 'No Email';
+    document.getElementById('editStuPhone').value = user.phone || 'No Phone';
+    document.getElementById('editStuCoins').value = (user.stats && user.stats.coins) ? user.stats.coins : 0;
+
+    document.getElementById('stuModalMyCode').innerText = user.myReferralCode || "SK" + uid.substring(0,5).toUpperCase();
     document.getElementById('stuModalReferredBy').innerText = user.referredBy || "Direct Joined";
     document.getElementById('stuModalImg').src = user.profilePic && !user.profilePic.includes('freepik') ? user.profilePic : 'logo.png';
-    document.getElementById('stuModalName').innerText = user.name || 'Unknown Student';
-    document.getElementById('stuModalEmail').innerText = user.email || 'No Email';
-    document.getElementById('stuModalPhone').innerText = user.phone || 'No Phone';
-
-    // 🌟 1. REFERRAL CODE LOGIC (यहाँ जोड़ा गया है)
-    let displayCode = user.myReferralCode || "SK" + uid.substring(0,5).toUpperCase();
-    let elMyCode = document.getElementById('stuModalMyCode');
-    if(elMyCode) elMyCode.innerText = displayCode;
-    
-    let elRefBy = document.getElementById('stuModalReferredBy');
-    if(elRefBy) elRefBy.innerText = user.referredBy || "Direct Joined";
-    
-    let stats = user.stats || {};
-    document.getElementById('stuModalCoins').innerText = stats.coins || 0;
-    document.getElementById('stuModalStreak').innerText = stats.streakDays || 0;
-    document.getElementById('stuModalAi').innerText = stats.aiDoubts || 0;
+    document.getElementById('stuModalStreak').innerText = (user.stats && user.stats.streakDays) ? user.stats.streakDays : 0;
 
     let purchasesHtml = '';
     let hasPurchases = false;
 
+    // Courses List with Dates
     if(user.purchasedCourses && user.purchasedCourses.length > 0) {
         hasPurchases = true;
         user.purchasedCourses.forEach((c, index) => {
-            purchasesHtml += `<li style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
-                <span><i class="fas fa-book" style="color:#3b82f6; margin-right:5px;"></i> ${c}</span>
+            let title = typeof c === 'object' ? c.title : c;
+            let dateStr = typeof c === 'object' ? c.date : "Date N/A";
+            purchasesHtml += `<li style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; border-bottom:1px solid #334155; padding-bottom:5px;">
+                <div><i class="fas fa-book" style="color:#3b82f6; margin-right:5px;"></i> ${title}<br><span style="font-size:0.7rem; color:#94a3b8; margin-left:20px;">Bought on: ${dateStr}</span></div>
                 <button onclick="revokeStudentAccess('${uid}', 'course', ${index})" style="background:rgba(239,68,68,0.2); color:#ef4444; border:none; padding:4px 8px; border-radius:4px; cursor:pointer; font-size:0.7rem;"><i class="fas fa-times"></i> Remove</button>
             </li>`;
         });
     }
     
+    // Tests List with Dates
     if(user.purchasedTests && user.purchasedTests.length > 0) {
         hasPurchases = true;
         user.purchasedTests.forEach((t, index) => {
-            purchasesHtml += `<li style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
-                <span><i class="fas fa-laptop-code" style="color:#10b981; margin-right:5px;"></i> ${t}</span>
+            let title = typeof t === 'object' ? t.title : t;
+            let dateStr = typeof t === 'object' ? t.date : "Date N/A";
+            purchasesHtml += `<li style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; border-bottom:1px solid #334155; padding-bottom:5px;">
+                <div><i class="fas fa-laptop-code" style="color:#10b981; margin-right:5px;"></i> ${title}<br><span style="font-size:0.7rem; color:#94a3b8; margin-left:20px;">Bought on: ${dateStr}</span></div>
                 <button onclick="revokeStudentAccess('${uid}', 'test', ${index})" style="background:rgba(239,68,68,0.2); color:#ef4444; border:none; padding:4px 8px; border-radius:4px; cursor:pointer; font-size:0.7rem;"><i class="fas fa-times"></i> Remove</button>
             </li>`;
         });
@@ -901,50 +902,42 @@ function openStudentKundali(encodedUserStr, uid) {
     if(!hasPurchases) purchasesHtml = '<li style="color:#ef4444;">No courses or tests purchased yet.</li>';
     document.getElementById('stuModalPurchases').innerHTML = purchasesHtml;
 
-    // 🌟 2. NEW BLOCK / DELETE LOGIC
-    let actionDiv = document.getElementById('blockStudentBtn').parentElement;
-    let oldDel = document.getElementById('deleteUserBtnApp');
-    if(oldDel) oldDel.remove(); // पुराना डिलीट बटन हटाओ
-
+    // Block/Unblock Logic
     let blockBtn = document.getElementById('blockStudentBtn');
-    let isCurrentlyBlocked = user.isBlocked === true;
-
-    // अगर ईमेल मास्टर एडमिन का है (आपका)
     if (user.email === "gauravkumarverma637@gmail.com") {
-        blockBtn.style.background = '#94a3b8'; 
-        blockBtn.innerHTML = '<i class="fas fa-shield-alt"></i> Admin Protected';
-        blockBtn.onclick = function() { alert("🛡️ Master Admin cannot be blocked or deleted!"); };
+        blockBtn.style.display = 'none';
     } else {
-        // अगर नॉर्मल स्टूडेंट है, तो Delete बटन बनाओ
-        let delBtn = document.createElement('button');
-        delBtn.id = 'deleteUserBtnApp';
-        delBtn.innerHTML = '<i class="fas fa-trash"></i> Delete Account';
-        delBtn.style.cssText = 'background:#475569; color:white; border:none; padding:10px 20px; border-radius:8px; cursor:pointer; font-weight:bold; margin-left:10px;';
-        delBtn.onclick = async function() {
-            let conf = prompt("WARNING! Type 'DELETE' to permanently remove this user and all their data.");
-            if(conf === 'DELETE') {
-                try {
-                    await db.collection("users").doc(uid).delete();
-                    alert("✅ User data permanently deleted from Database.");
-                    closeModal('studentDetailsModal');
-                    fetchAllRealData();
-                } catch(e) { alert("Error: " + e.message); }
-            }
-        };
-        actionDiv.appendChild(delBtn);
-
-        // नॉर्मल स्टूडेंट के लिए Block/Unblock बटन
-        if (isCurrentlyBlocked) {
-            blockBtn.style.background = '#10b981'; 
-            blockBtn.innerHTML = '<i class="fas fa-unlock"></i> Unblock User';
+        blockBtn.style.display = 'inline-block';
+        if (user.isBlocked) {
+            blockBtn.style.background = '#10b981'; blockBtn.innerHTML = '<i class="fas fa-unlock"></i> Unblock User';
             blockBtn.onclick = function() { toggleBlockStatus(uid, false); };
         } else {
-            blockBtn.style.background = '#ef4444'; 
-            blockBtn.innerHTML = '<i class="fas fa-ban"></i> Block User';
+            blockBtn.style.background = '#ef4444'; blockBtn.innerHTML = '<i class="fas fa-ban"></i> Block User';
             blockBtn.onclick = function() { toggleBlockStatus(uid, true); };
         }
     }
     document.getElementById('studentDetailsModal').style.display = 'flex';
+}
+
+// नया फंक्शन: एडमिन द्वारा डेटा सेव करना
+window.saveAdminStudentEdit = async function() {
+    if(!currentEditingStudentUid) return;
+    let newName = document.getElementById('editStuName').value.trim();
+    let newPhone = document.getElementById('editStuPhone').value.trim();
+    let newCoins = parseInt(document.getElementById('editStuCoins').value) || 0;
+
+    try {
+        await db.collection("users").doc(currentEditingStudentUid).update({
+            name: newName,
+            phone: newPhone,
+            "stats.coins": newCoins
+        });
+        alert("✅ Student details updated successfully!");
+        closeModal('studentDetailsModal');
+        fetchAllRealData(); // रिफ्रेश टेबल
+    } catch(e) {
+        alert("Error updating details: " + e.message);
+    }
 }
 
 // बच्चे से कोर्स/टेस्ट वापस छीनना (Revoke Access)
@@ -1229,27 +1222,37 @@ async function updateAppStatus() {
 // =========================================================================
 // 🎟️ प्रोमो कोड लॉजिक (PROMO CODE LOGIC)
 // =========================================================================
-db.collection("app_settings").doc("promo_code").get().then(doc => {
+// admin.js में इसे रिप्लेस करें
+db.collection("app_settings").doc("promo_code").onSnapshot(doc => {
     if(doc.exists) {
         let data = doc.data();
         document.getElementById('adminCoursePromo').value = data.courseCode || "";
         document.getElementById('adminCourseDiscount').value = data.courseDiscount || 0;
+        document.getElementById('adminCourseLimit').value = data.courseLimit || 0;
+        document.getElementById('cUsedCount').innerText = data.courseUsedCount || 0;
+
         document.getElementById('adminTestPromo').value = data.testCode || "";
         document.getElementById('adminTestDiscount').value = data.testDiscount || 0;
+        document.getElementById('adminTestLimit').value = data.testLimit || 0;
+        document.getElementById('tUsedCount').innerText = data.testUsedCount || 0;
     }
 });
 
 async function savePromoConfig() {
     let cCode = document.getElementById('adminCoursePromo').value.trim().toUpperCase();
     let cDisc = Number(document.getElementById('adminCourseDiscount').value) || 0;
+    let cLimit = Number(document.getElementById('adminCourseLimit').value) || 0;
+    
     let tCode = document.getElementById('adminTestPromo').value.trim().toUpperCase();
     let tDisc = Number(document.getElementById('adminTestDiscount').value) || 0;
+    let tLimit = Number(document.getElementById('adminTestLimit').value) || 0;
     
     try {
         await db.collection("app_settings").doc("promo_code").set({ 
-            courseCode: cCode, courseDiscount: cDisc, testCode: tCode, testDiscount: tDisc
-        });
-        alert(`✅ Promo Codes Updated Successfully!`);
+            courseCode: cCode, courseDiscount: cDisc, courseLimit: cLimit,
+            testCode: tCode, testDiscount: tDisc, testLimit: tLimit
+        }, { merge: true }); // Merge true रखा है ताकि पुरानी usedCount डिलीट न हो
+        alert(`✅ Promo Codes with Limits Updated!`);
     } catch(e) { alert("Error: " + e.message); }
 }
 
@@ -1373,23 +1376,7 @@ function initDashboardChart() {
 setTimeout(initDashboardChart, 1000);
 setTimeout(initDashboardChart, 1000); 
 
-// 2. AI डाउट्स लॉग लोड करना
-async function loadAIDoubts() {
-    try {
-        const snap = await db.collection("ai_doubts_logs").orderBy("timestamp", "desc").limit(50).get();
-        let html = '';
-        snap.forEach(doc => {
-            let d = doc.data();
-            let dateStr = d.timestamp ? new Date(d.timestamp.toDate()).toLocaleDateString() : 'Just Now';
-            html += `<tr>
-                <td style="color: white; font-weight: bold;">${d.userName}<br><span style="font-size:0.75rem; color:#94a3b8; font-weight:normal;">${d.email}</span></td>
-                <td style="color: #cbd5e1; max-width: 300px; word-wrap: break-word;">"${d.question}"</td>
-                <td><span style="background: rgba(59, 130, 246, 0.1); color: #3b82f6; padding: 4px 8px; border-radius: 4px; font-size: 0.75rem;">${dateStr}</span></td>
-            </tr>`;
-        });
-        document.getElementById('aiDoubtsTableBody').innerHTML = html || '<tr><td colspan="3">No questions asked to AI yet.</td></tr>';
-    } catch(e) { console.log(e); }
-}
+
 
 // (ये फंक्शन सिर्फ टेस्ट करने के लिए है - एक साथ 100 सवाल बनाने के लिए)
 function autoGenerateQuestions() {
@@ -1487,6 +1474,164 @@ function addTestPaperRow(containerId, title = '', duration = 60, questionsJson =
         <button class="btn-del" onclick="this.parentElement.remove()"><i class="fas fa-times"></i></button>
     </div>`;
     box.insertAdjacentHTML('beforeend', html);
+}
+// 🌐 1. Google Translate API (Free Auto-Translate)
+async function fetchTranslation(text) {
+    if(!text) return "";
+    try {
+        const url = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=en&tl=hi&dt=t&q=${encodeURIComponent(text)}`;
+        const res = await fetch(url);
+        const data = await res.json();
+        return data[0][0][0]; 
+    } catch(e) { return text; }
+}
+
+// ✍️ 2. Test Series में मैन्युअल सवाल जोड़ने का मोडल (Modal)
+let tempTestQuestions = [];
+let currentTestRowId = "";
+
+window.openManualQuestionEditor = function(containerId) {
+    currentTestRowId = containerId;
+    tempTestQuestions = [];
+    document.getElementById('manualQEditorModal').style.display = 'flex';
+    document.getElementById('manualQContainer').innerHTML = '';
+    addSingleManualQuestion(); // पहला खाली सवाल खोल दो
+}
+
+window.addSingleManualQuestion = function() {
+    let qCount = document.querySelectorAll('.manual-q-block').length + 1;
+    let html = `
+    <div class="manual-q-block" style="background:#0f172a; padding:15px; border-radius:10px; border:1px solid #334155; margin-bottom:15px;">
+        <div style="display:flex; justify-content:space-between; margin-bottom:10px;">
+            <strong style="color:#f59e0b;">Question ${qCount}</strong>
+            <div>
+                <button onclick="autoTranslateManualQ(this)" style="background:#3b82f6; color:white; border:none; padding:4px 8px; border-radius:4px; cursor:pointer; font-size:0.7rem;"><i class="fas fa-language"></i> Auto Translate to Hindi</button>
+                <button onclick="this.parentElement.parentElement.parentElement.remove()" style="background:#ef4444; color:white; border:none; padding:4px 8px; border-radius:4px; cursor:pointer; font-size:0.7rem; margin-left:5px;"><i class="fas fa-trash"></i></button>
+            </div>
+        </div>
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
+            <input type="text" class="mq-en" placeholder="Question (English)" style="padding:8px; border-radius:6px; background:#1e293b; color:white; border:1px solid #334155;">
+            <input type="text" class="mq-hi" placeholder="Question (Hindi)" style="padding:8px; border-radius:6px; background:#1e293b; color:white; border:1px solid #334155;">
+            <input type="text" class="mopt-en-0" placeholder="Option A (En)" style="padding:8px; border-radius:6px; background:#1e293b; color:white; border:1px solid #334155;">
+            <input type="text" class="mopt-hi-0" placeholder="Option A (Hi)" style="padding:8px; border-radius:6px; background:#1e293b; color:white; border:1px solid #334155;">
+            <input type="text" class="mopt-en-1" placeholder="Option B (En)" style="padding:8px; border-radius:6px; background:#1e293b; color:white; border:1px solid #334155;">
+            <input type="text" class="mopt-hi-1" placeholder="Option B (Hi)" style="padding:8px; border-radius:6px; background:#1e293b; color:white; border:1px solid #334155;">
+            <input type="text" class="mopt-en-2" placeholder="Option C (En)" style="padding:8px; border-radius:6px; background:#1e293b; color:white; border:1px solid #334155;">
+            <input type="text" class="mopt-hi-2" placeholder="Option C (Hi)" style="padding:8px; border-radius:6px; background:#1e293b; color:white; border:1px solid #334155;">
+            <input type="text" class="mopt-en-3" placeholder="Option D (En)" style="padding:8px; border-radius:6px; background:#1e293b; color:white; border:1px solid #334155;">
+            <input type="text" class="mopt-hi-3" placeholder="Option D (Hi)" style="padding:8px; border-radius:6px; background:#1e293b; color:white; border:1px solid #334155;">
+        </div>
+        <div style="margin-top:10px; display:flex; gap:10px; align-items:center;">
+            <select class="mq-ans" style="padding:8px; border-radius:6px; background:#10b981; color:white; border:none; font-weight:bold;">
+                <option value="0">Ans: Opt A</option><option value="1">Ans: Opt B</option><option value="2">Ans: Opt C</option><option value="3">Ans: Opt D</option>
+            </select>
+            <input type="text" class="mq-exp" placeholder="Explanation / Solution (Optional)" style="flex:1; padding:8px; border-radius:6px; background:#1e293b; color:white; border:1px solid #334155;">
+        </div>
+    </div>`;
+    document.getElementById('manualQContainer').insertAdjacentHTML('beforeend', html);
+}
+
+window.autoTranslateManualQ = async function(btn) {
+    let block = btn.closest('.manual-q-block');
+    btn.innerHTML = 'Translating...'; btn.disabled = true;
+    
+    block.querySelector('.mq-hi').value = await fetchTranslation(block.querySelector('.mq-en').value);
+    block.querySelector('.mopt-hi-0').value = await fetchTranslation(block.querySelector('.mopt-en-0').value);
+    block.querySelector('.mopt-hi-1').value = await fetchTranslation(block.querySelector('.mopt-en-1').value);
+    block.querySelector('.mopt-hi-2').value = await fetchTranslation(block.querySelector('.mopt-en-2').value);
+    block.querySelector('.mopt-hi-3').value = await fetchTranslation(block.querySelector('.mopt-en-3').value);
+    block.querySelector('.mq-exp').value = await fetchTranslation(block.querySelector('.mq-exp').value); // Optional
+
+    btn.innerHTML = '<i class="fas fa-check"></i> Done'; btn.style.background = '#10b981';
+    setTimeout(() => { btn.innerHTML = '<i class="fas fa-language"></i> Auto Translate'; btn.style.background = '#3b82f6'; btn.disabled = false; }, 2000);
+}
+
+window.saveManualQuestionsToRow = function() {
+    let questions = [];
+    document.querySelectorAll('.manual-q-block').forEach(block => {
+        let qEn = block.querySelector('.mq-en').value.trim();
+        if(qEn) {
+            questions.push({
+                qEn: qEn, qHi: block.querySelector('.mq-hi').value.trim() || qEn,
+                optsEn: [block.querySelector('.mopt-en-0').value, block.querySelector('.mopt-en-1').value, block.querySelector('.mopt-en-2').value, block.querySelector('.mopt-en-3').value],
+                optsHi: [block.querySelector('.mopt-hi-0').value || block.querySelector('.mopt-en-0').value, block.querySelector('.mopt-hi-1').value || block.querySelector('.mopt-en-1').value, block.querySelector('.mopt-hi-2').value || block.querySelector('.mopt-en-2').value, block.querySelector('.mopt-hi-3').value || block.querySelector('.mopt-en-3').value],
+                ans: parseInt(block.querySelector('.mq-ans').value),
+                exp: block.querySelector('.mq-exp').value.trim() || "No explanation provided."
+            });
+        }
+    });
+
+    if(questions.length > 0 && currentTestRowId) {
+        // Find the input hidden field in the row and save JSON
+        let row = document.getElementById(currentTestRowId);
+        let hiddenInput = row.parentElement.querySelector('.tp-questions-data');
+        if(hiddenInput) {
+            hiddenInput.value = JSON.stringify(questions);
+            let btn = hiddenInput.parentElement.querySelector('.manual-q-btn');
+            if(btn) { btn.innerHTML = `<i class="fas fa-check"></i> ${questions.length} Qs Saved`; btn.style.background = '#10b981'; btn.style.color = 'white'; }
+        }
+    }
+    document.getElementById('manualQEditorModal').style.display = 'none';
+}
+
+// 📁 3. Update addTestPaperRow() to show the "Manual" button along with CSV
+window.addTestPaperRow = function(containerId, title = '', duration = 60, questionsJson = '[]') {
+    tpaperCount++;
+    const box = document.getElementById(containerId);
+    let rowId = `trow-${tpaperCount}`;
+    
+    const html = `
+    <div class="content-item test-file-row" id="${rowId}" style="border-left: 4px solid #10b981; flex-wrap: nowrap; gap: 10px; background:#0f172a; margin-top:8px;">
+        <i class="fas fa-file-signature" style="color:#10b981; font-size:1.2rem;"></i>
+        <input type="text" class="tp-title" placeholder="Test Name (e.g. Mock 1)" value="${title}" style="flex:2; border:1px solid #334155;">
+        <input type="number" class="tp-duration" placeholder="Mins" value="${duration}" style="width:70px; border:1px solid #334155;">
+        <input type="hidden" class="tp-questions-data" value='${questionsJson}'>
+        
+        <!-- NEW MANUAL BUTTON -->
+        <button class="manual-q-btn" style="background:#f59e0b; color:white; border:none; padding:10px; border-radius:6px; cursor:pointer;" onclick="openManualQuestionEditor('${rowId}')"><i class="fas fa-pen"></i> Type Qs</button>
+        
+        <!-- CSV UPLOAD -->
+        <input type="file" id="csv-upload-${tpaperCount}" accept=".csv" style="display:none;" onchange="processTestCSV(this)">
+        <button class="file-upload-btn" style="background:#3b82f6; white-space:nowrap; padding:10px;" onclick="document.getElementById('csv-upload-${tpaperCount}').click()"><i class="fas fa-upload"></i> CSV</button>
+        
+        <button class="btn-del" onclick="this.parentElement.remove()"><i class="fas fa-times"></i></button>
+    </div>`;
+    box.insertAdjacentHTML('beforeend', html);
+}
+
+// 📄 4. Update processTestCSV() for New Format (12 Columns with Explanation)
+window.processTestCSV = function(inputElement) {
+    let file = inputElement.files[0];
+    if (!file) return;
+
+    let btn = inputElement.nextElementSibling;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Reading...';
+
+    let reader = new FileReader();
+    reader.onload = function(e) {
+        let text = e.target.result;
+        let lines = text.split('\n');
+        let questions = [];
+        
+        // Format: Q(En)[0], Q(Hi)[1], Opt0(En)[2], Opt0(Hi)[3], Opt1(En)[4], Opt1(Hi)[5], Opt2(En)[6], Opt2(Hi)[7], Opt3(En)[8], Opt3(Hi)[9], Ans[10], Exp[11]
+        for(let i = 1; i < lines.length; i++) {
+            let cols = lines[i].split(',');
+            if(cols.length >= 11 && cols[0].trim() !== '') {
+                questions.push({
+                    qEn: cols[0].trim(), qHi: cols[1] ? cols[1].trim() : cols[0].trim(),
+                    optsEn: [cols[2].trim(), cols[4].trim(), cols[6].trim(), cols[8].trim()],
+                    optsHi: [cols[3].trim()||cols[2].trim(), cols[5].trim()||cols[4].trim(), cols[7].trim()||cols[6].trim(), cols[9].trim()||cols[8].trim()],
+                    ans: parseInt(cols[10].trim()),
+                    exp: cols[11] ? cols[11].trim() : "No explanation provided."
+                });
+            }
+        }
+        
+        inputElement.previousElementSibling.previousElementSibling.value = JSON.stringify(questions);
+        btn.innerHTML = `<i class="fas fa-check"></i> ${questions.length} Qs Ready`;
+        btn.style.background = '#10b981';
+    };
+    reader.readAsText(file);
 }
 
 // CSV से सवाल पढ़कर JSON में बदलना
@@ -1653,7 +1798,7 @@ window.rejectPayment = async function(payId) {
 }
 
 window.approvePayment = async function(payId, userId) {
-    if(!confirm("क्या आपने बैंक में पेमेंट चेक कर लिया है? Appove करें?")) return;
+    if(!confirm("क्या आपने बैंक में पेमेंट चेक कर लिया है? Approve करें?")) return;
     try {
         let payDoc = await db.collection("payments").doc(payId).get();
         let items = payDoc.data().items;
@@ -1661,20 +1806,32 @@ window.approvePayment = async function(payId, userId) {
         let userDoc = await db.collection("users").doc(userId).get();
         let userData = userDoc.data();
         
-        // बच्चे के अकाउंट में कोर्स और टेस्ट डालना
+        userData.purchasedCourses = userData.purchasedCourses || [];
+        userData.purchasedTests = userData.purchasedTests || [];
+        
+        // बच्चे के अकाउंट में कोर्स और टेस्ट डालना (Date के साथ)
+        let todayDate = new Date().toLocaleDateString();
+        
         items.forEach(item => {
-            if(item.type === 'course' && !userData.purchasedCourses.includes(item.title)) {
-                userData.purchasedCourses.push(item.title);
+            if(item.type === 'course') {
+                // पहले चेक करो कि कहीं पहले से तो नहीं है
+                let exists = userData.purchasedCourses.some(c => (typeof c === 'object' ? c.title : c) === item.title);
+                if(!exists) userData.purchasedCourses.push({ title: item.title, date: todayDate });
             }
-            if(item.type === 'test' && !userData.purchasedTests.includes(item.title)) {
-                userData.purchasedTests.push(item.title);
+            if(item.type === 'test') {
+                let exists = userData.purchasedTests.some(t => (typeof t === 'object' ? t.title : t) === item.title);
+                if(!exists) userData.purchasedTests.push({ title: item.title, date: todayDate });
             }
         });
         
+        // यूजर का डेटा अपडेट करना और कार्ट खाली करना
         await db.collection("users").doc(userId).update({
             purchasedCourses: userData.purchasedCourses,
-            purchasedTests: userData.purchasedTests
+            purchasedTests: userData.purchasedTests,
+            cart: [] 
         });
+        
+        // पेमेंट को Approved करना
         await db.collection("payments").doc(payId).update({ status: "Approved" });
         alert("✅ Payment Approved! बच्चे को कोर्स/टेस्ट मिल गया है।");
     } catch(e) { alert("Error: " + e.message); }
@@ -1770,3 +1927,85 @@ db.collection("app_settings").doc("syllabus_data").get().then(doc => {
         });
     }
 });
+
+// =========================================================================
+// 🌐 GOVT SITES MANAGER LOGIC (ADMIN PANEL)
+// =========================================================================
+
+function openSiteModal() {
+    document.getElementById('editingSiteId').value = '';
+    document.getElementById('siteName').value = '';
+    document.getElementById('siteUrl').value = '';
+    document.getElementById('webModalTitle').innerHTML = '<i class="fas fa-plus"></i> Add Govt Site';
+    document.getElementById('saveSiteBtn').innerHTML = '<i class="fas fa-save"></i> Save Site';
+    document.getElementById('addWebSiteModal').style.display = 'flex';
+}
+
+window.editWebSite = function(id, name, url) {
+    document.getElementById('editingSiteId').value = id;
+    document.getElementById('siteName').value = name;
+    document.getElementById('siteUrl').value = url;
+    document.getElementById('webModalTitle').innerHTML = '<i class="fas fa-edit" style="color:#f59e0b;"></i> Edit Site';
+    document.getElementById('saveSiteBtn').innerHTML = '<i class="fas fa-sync"></i> Update Site';
+    document.getElementById('addWebSiteModal').style.display = 'flex';
+};
+
+async function saveWebSiteToDB() {
+    let id = document.getElementById('editingSiteId').value;
+    let name = document.getElementById('siteName').value.trim();
+    let url = document.getElementById('siteUrl').value.trim();
+    
+    if(!name || !url) return alert("Name and URL are required!");
+    if(!url.startsWith('http')) url = 'https://' + url;
+
+    let btn = document.getElementById('saveSiteBtn');
+    btn.innerHTML = 'Saving...'; btn.disabled = true;
+
+    try {
+        if(id) {
+            await db.collection("govt_sites").doc(id).update({ name, url });
+            alert("✅ Site Updated!");
+        } else {
+            await db.collection("govt_sites").add({ name, url, createdAt: firebase.firestore.FieldValue.serverTimestamp() });
+            alert("✅ New Site Added!");
+        }
+        closeModal('addWebSiteModal');
+    } catch(e) { 
+        alert("Error: " + e.message); 
+    } finally { 
+        btn.innerHTML = '<i class="fas fa-save"></i> Save Site'; 
+        btn.disabled = false; 
+    }
+}
+
+async function fetchWebSitesData() {
+    db.collection("govt_sites").orderBy("createdAt", "desc").onSnapshot(snap => {
+        let html = '';
+        snap.forEach(doc => {
+            let site = doc.data();
+            let domain = "";
+            try { domain = (new URL(site.url)).hostname; } catch(e) { domain = site.url; }
+            let logoUrl = `https://www.google.com/s2/favicons?domain=${domain}&sz=64`;
+            
+            html += `<tr>
+                <td><div style="display:flex; align-items:center; gap:10px;"><img src="${logoUrl}" style="width:25px; border-radius:50%; background:white; padding:2px;"> <strong style="color:white;">${site.name}</strong></div></td>
+                <td><a href="${site.url}" target="_blank" style="color:#3b82f6; font-size:0.8rem;">${site.url}</a></td>
+                <td>
+                    <button style="background:#f59e0b; color:white; border:none; padding:6px 12px; border-radius:6px; cursor:pointer; margin-right:5px;" onclick="editWebSite('${doc.id}', '${site.name}', '${site.url}')"><i class="fas fa-edit"></i></button>
+                    <button style="background:#ef4444; color:white; border:none; padding:6px 12px; border-radius:6px; cursor:pointer;" onclick="deleteGovtSite('${doc.id}')"><i class="fas fa-trash"></i></button>
+                </td>
+            </tr>`;
+        });
+        let tbody = document.getElementById('webSitesTableBody');
+        if(tbody) tbody.innerHTML = html || '<tr><td colspan="3">No sites found. Click "Add New Site".</td></tr>';
+    });
+}
+
+async function deleteGovtSite(id) {
+    if(confirm("⚠️ क्या आप सच में इस वेबसाइट को डिलीट करना चाहते हैं?")) {
+        await db.collection("govt_sites").doc(id).delete();
+    }
+}
+
+// डैशबोर्ड लोड होने पर साइट्स लोड करें
+setTimeout(fetchWebSitesData, 2000);

@@ -1,69 +1,24 @@
-// YouTube API ग्लोबल प्लेयर
-let globalYtPlayer = null;
-
-// यह फंक्शन YouTube API अपने आप कॉल करता है जब वो लोड हो जाता है
-function onYouTubeIframeAPIReady() {
-    globalYtPlayer = new YT.Player('courseVideoPlayer', {
-        events: {
-            'onReady': function(event) { console.log("YT Player Ready"); }
-        }
-    });
-}
-
-// 10 सेकंड आगे/पीछे करने का फंक्शन
-window.skipVideo = function(seconds) {
-    if (globalYtPlayer && typeof globalYtPlayer.getCurrentTime === 'function') {
-        let currentTime = globalYtPlayer.getCurrentTime();
-        globalYtPlayer.seekTo(currentTime + seconds, true);
-    }
-};
-
-// 1. Service Worker Registration (For Offline App)
+// 1. Service Worker Registration (For Offline App & PWA)
 if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => {
-        navigator.serviceWorker.register('./sw.js').then(reg => {
-            console.log('Service Worker Registered!', reg.scope);
-        }).catch(err => console.log('Service Worker Error', err));
+        navigator.serviceWorker.register('./sw.js')
+        .then(reg => {
+            console.log('Service Worker Registered Successfully!', reg.scope);
+            // अगर कोई नया अपडेट आता है, तो तुरंत पेज रिफ्रेश करो
+            reg.addEventListener('updatefound', () => {
+                if (reg.installing) {
+                    reg.installing.addEventListener('statechange', () => {
+                        if (reg.installing.state === 'installed' && navigator.serviceWorker.controller) {
+                            console.log('New update available. Refreshing...');
+                            window.location.reload();
+                        }
+                    });
+                }
+            });
+        })
+        .catch(err => console.log('Service Worker Error', err));
     });
 }
-
-// 2. Offline PDF Database (IndexedDB)
-const PDFDatabase = {
-    db: null,
-    init: function() {
-        return new Promise((resolve, reject) => {
-            const request = indexedDB.open("SK_Study_PDFs", 1);
-            request.onupgradeneeded = (e) => {
-                let db = e.target.result;
-                if (!db.objectStoreNames.contains("pdfs")) {
-                    db.createObjectStore("pdfs", { keyPath: "id" });
-                }
-            };
-            request.onsuccess = (e) => { this.db = e.target.result; resolve(); };
-            request.onerror = (e) => reject(e);
-        });
-    },
-    savePDF: async function(id, blob) {
-        await this.init();
-        return new Promise((resolve, reject) => {
-            const tx = this.db.transaction("pdfs", "readwrite");
-            const store = tx.objectStore("pdfs");
-            store.put({ id: id, data: blob });
-            tx.oncomplete = () => resolve();
-            tx.onerror = () => reject();
-        });
-    },
-    getPDF: async function(id) {
-        await this.init();
-        return new Promise((resolve, reject) => {
-            const tx = this.db.transaction("pdfs", "readonly");
-            const store = tx.objectStore("pdfs");
-            const request = store.get(id);
-            request.onsuccess = () => resolve(request.result ? request.result.data : null);
-            request.onerror = () => reject();
-        });
-    }
-};
 /* ========================================================================= */
 /* 🚀 MAIN.JS - ऐप की शुरुआत, कोर्स प्लेयर, एग्जाम इंजन और स्मार्ट फीचर्स       */
 /* यह फ़ाइल पूरे ऐप को चलाती है (लॉगिन चेक, होम पेज डेटा, वीडियो और टेस्ट)   */
@@ -73,8 +28,8 @@ const PDFDatabase = {
 // फ़ंक्शन 1: ऐप लॉगिन चेक (App Authentication Check)
 // यह चेक करता है कि बच्चा पहले से लॉगिन है या नहीं। अगर नेट नहीं है तो एरर देगा।
 // -------------------------------------------------------------------------
+
 function runAppAuthCheck() {
-    // अगर इंटरनेट बंद है और Firebase लोड नहीं हुआ
     if(typeof firebase === 'undefined') {
         alert("Internet Connection Error! App could not load completely.");
         document.getElementById('spinnerSplashScreen').style.display = 'none';
@@ -82,39 +37,35 @@ function runAppAuthCheck() {
         return;
     }
 
-    // Firebase से चेक करना कि कोई यूजर लॉगिन है या नहीं
     firebase.auth().onAuthStateChanged((user) => {
         let spinner = document.getElementById('spinnerSplashScreen');
         let logoSplash = document.getElementById('logoSplashScreen'); 
         
         if (user) {
-            // अगर लॉगिन है, तो डेटाबेस से उसका डेटा निकालो
-            db.collection("users").doc(user.uid).get()
-            .then(doc => {
+            db.collection("users").doc(user.uid).onSnapshot(doc => {
                 if(doc.exists) {
                     currentUserData = doc.data(); 
-                    
-                    // अगर एडमिन ने इस बच्चे को ब्लॉक कर दिया है
                     if(currentUserData.isBlocked) {
                         alert("🚫 Your account has been BLOCKED by Admin. Please contact support.");
-                        firebase.auth().signOut(); // उसे ऐप से बाहर निकाल दो
+                        firebase.auth().signOut(); 
                         return;
                     }
-                    initUserData(); // सब ठीक है तो ऐप चालू करो
+                    initUserData(); 
                 } else {
-                    logoutUser(); // अगर डेटाबेस में डेटा नहीं है तो बाहर निकालो
+                    logoutUser(); 
                 }
-            }).catch(err => {
+            }, err => {
                 console.error("Database Error:", err);
                 if(spinner) spinner.style.display = 'none';
                 if(logoSplash) logoSplash.style.display = 'none';
+                document.getElementById('bottomNav').style.display = 'none'; // 🔥 Hide Nav
                 document.querySelectorAll('.tab-content').forEach(tab => tab.classList.remove('active'));
                 document.getElementById('authTab').classList.add('active');
             });
         } else {
-            // अगर लॉगिन नहीं है, तो लॉगिन स्क्रीन दिखाओ
             if(spinner) spinner.style.display = 'none';
             if(logoSplash) logoSplash.style.display = 'none';
+            document.getElementById('bottomNav').style.display = 'none'; // 🔥 Hide Nav on Login Screen
             document.querySelectorAll('.tab-content').forEach(tab => tab.classList.remove('active'));
             document.getElementById('authTab').classList.add('active');
             switchAuthView('loginCard');
@@ -162,14 +113,6 @@ document.addEventListener('DOMContentLoaded', () => {
     if(savedLang === 'hi') { currentLang = 'en'; toggleLanguage(); }
     updateDailyQuote();
     localStorage.removeItem('usersDB'); 
-
-    // 4. AI में 'Enter' बटन दबाने पर मैसेज भेजना
-    const aiInput = document.getElementById('aiInput');
-    if(aiInput) {
-        aiInput.addEventListener('keypress', function (e) {
-            if (e.key === 'Enter') { e.preventDefault(); handleSendAI(); }
-        });
-    }
 
     // 5. थीम सेट करना
     const savedTheme = localStorage.getItem('theme') || 'light';
@@ -278,15 +221,7 @@ function syncAppWithAdmin() {
                 if(data.cat3) catItems[2].innerText = data.cat3;
                 if(data.cat4) catItems[3].innerText = data.cat4;
             }
-            let menuItems = document.querySelectorAll('.menu-item span');
-            if(menuItems.length >= 6) {
-                if(data.btn1) menuItems[0].innerText = data.btn1;
-                if(data.btn2) menuItems[1].innerText = data.btn2;
-                if(data.btn3) menuItems[2].innerText = data.btn3;
-                if(data.btn4) menuItems[3].innerText = data.btn4;
-                if(data.btn5) menuItems[4].innerText = data.btn5;
-                if(data.btn6) menuItems[5].innerText = data.btn6;
-            }
+            
         }
     });
 
@@ -304,17 +239,24 @@ function syncAppWithAdmin() {
         }
     });
 
-    // 4. मेन्टेनेंस मोड (जब ऐप बंद करना हो)
+    // 4. मेन्टेनेंस मोड (जब ऐप बंद करना हो) - Admin Bypass
     db.collection("app_settings").doc("status").onSnapshot((doc) => {
         let mScreen = document.getElementById('maintenanceScreen');
         if (doc.exists) {
             let data = doc.data();
-            if(data.isMaintenance) {
+            
+            // चेक करें कि करेंट यूजर एडमिन है या नहीं
+            let currentUser = firebase.auth().currentUser;
+            let isAdmin = currentUser && currentUser.email === "gauravkumarverma637@gmail.com";
+
+            // अगर मेंटेनेंस मोड ON है और यूजर एडमिन "नहीं" है, तभी ताला लगाओ
+            if(data.isMaintenance && !isAdmin) {
                 if(mScreen) mScreen.style.display = 'flex'; // ताला लगाओ
                 let mMsg = document.getElementById('maintenanceMsg');
                 if(mMsg) mMsg.innerText = data.message || "We are updating our servers. Please check back soon.";
             } else {
-                if(mScreen) mScreen.style.display = 'none'; // खोल दो
+                // एडमिन के लिए या नॉर्मल मोड में हमेशा खुला रहेगा
+                if(mScreen) mScreen.style.display = 'none'; 
             }
         }
     });
@@ -400,7 +342,7 @@ function syncAppWithAdmin() {
     };
     
     // ---------------------------------------------------------------------
-    // घंटी (Bell Icon) और नोटिफिकेशन का लॉजिक
+    // घंटी (Bell Icon), Notifications और Push Notification
     // ---------------------------------------------------------------------
     let bellIconDot = document.querySelector('.bell-icon .dot');
     let bellIconBtn = document.querySelector('.bell-icon');
@@ -412,38 +354,51 @@ function syncAppWithAdmin() {
         };
     }
     
-    // नई नोटिफिकेशन चेक करना (सिर्फ वो जो अकाउंट बनने के बाद आई हैं)
-   db.collection("notifications").orderBy("timestamp", "desc").onSnapshot((snap) => {
-        let deletedNotis = JSON.parse(localStorage.getItem('deletedNotis')) || [];
+    // Push Notification Permission
+    if ('Notification' in window && Notification.permission !== 'granted') {
+        Notification.requestPermission();
+    }
+    
+    let currentUser = firebase.auth().currentUser;
+    let uidKey = currentUser ? currentUser.uid : "guest";
+
+    db.collection("notifications").orderBy("timestamp", "desc").onSnapshot((snap) => {
+        let deletedNotis = JSON.parse(localStorage.getItem('deletedNotis_' + uidKey)) || [];
         let hasNew = false;
         
-        let currentUser = firebase.auth().currentUser;
         let userCreationTime = currentUser ? new Date(currentUser.metadata.creationTime).getTime() : 0;
-        let lastSeen = localStorage.getItem("lastSeenNotiTime") || 0;
+        let lastSeen = localStorage.getItem("lastSeenNotiTime_" + uidKey) || 0;
         
-        snap.forEach(doc => {
-            let data = doc.data();
+        snap.docChanges().forEach((change) => {
+            let data = change.doc.data();
             let notiTime = data.timestamp ? data.timestamp.toMillis() : Date.now();
             
-            // अगर नोटिस डिलीट नहीं हुई है, अकाउंट बनने के बाद आई है, और आख़िरी बार देखे गए समय के बाद आई है
-            if (!deletedNotis.includes(doc.id) && notiTime >= userCreationTime && notiTime > lastSeen) {
-                hasNew = true;
+            // नया नोटिस आया है और डिलीट नहीं हुआ है
+            if (!deletedNotis.includes(change.doc.id) && notiTime >= userCreationTime) {
+                if (notiTime > lastSeen) hasNew = true;
+
+                // मोबाइल स्क्रीन पर Push Notification भेजना (सिर्फ नई नोटिस पर)
+                if (change.type === "added" && notiTime > lastSeen && Notification.permission === 'granted') {
+                    new Notification(data.title, { body: data.message, icon: './logo.png' });
+                }
             }
         });
 
-        // 🌟 अगर सच में नई नोटिस है, तभी लाल डॉट दिखाओ
         if (hasNew && bellIconDot) bellIconDot.style.display = 'block';
     });
 }
 
 // नोटिफिकेशन की लिस्ट लोड करना
 async function loadNotifications() {
-    let container = document.getElementById('notiListContainer');
-    let deletedNotis = JSON.parse(localStorage.getItem('deletedNotis')) || [];
-    localStorage.setItem("lastSeenNotiTime", Date.now());
-    
     let currentUser = firebase.auth().currentUser;
-    let userCreationTime = currentUser ? new Date(currentUser.metadata.creationTime).getTime() : 0;
+    if(!currentUser) return;
+    
+    let uidKey = currentUser.uid;
+    let container = document.getElementById('notiListContainer');
+    let deletedNotis = JSON.parse(localStorage.getItem('deletedNotis_' + uidKey)) || [];
+    localStorage.setItem("lastSeenNotiTime_" + uidKey, Date.now());
+    
+    let userCreationTime = new Date(currentUser.metadata.creationTime).getTime();
     
     try {
         const snap = await db.collection("notifications").orderBy("timestamp", "desc").get();
@@ -466,11 +421,15 @@ async function loadNotifications() {
     } catch (e) { console.log(e); }
 }
 
-// नोटिफिकेशन डिलीट करना
-function deleteAppNotification(id) {
-    let deletedNotis = JSON.parse(localStorage.getItem('deletedNotis')) || [];
+// नोटिफिकेशन डिलीट करना (अब हर यूज़र का डिलीट डेटा अलग सेव होगा)
+window.deleteAppNotification = function(id) {
+    let currentUser = firebase.auth().currentUser;
+    if(!currentUser) return;
+    
+    let uidKey = currentUser.uid;
+    let deletedNotis = JSON.parse(localStorage.getItem('deletedNotis_' + uidKey)) || [];
     deletedNotis.push(id);
-    localStorage.setItem('deletedNotis', JSON.stringify(deletedNotis));
+    localStorage.setItem('deletedNotis_' + uidKey, JSON.stringify(deletedNotis));
     document.getElementById(`noti-${id}`).style.display = 'none';
 }
 
@@ -697,25 +656,136 @@ window.handleCourseBackBtn = function() {
     }
 }
 
-// वीडियो प्ले करना (नया सिक्योर तरीका)
+// वीडियो प्ले करना
+// =========================================================================
+// 🎥 YOUTUBE VIDEO CONTROLLER (PIRACY PROTECTED & CUSTOM CONTROLS)
+// =========================================================================
+let globalYtPlayer = null;
+
+// यह फंक्शन YouTube API अपने आप कॉल करता है
+function onYouTubeIframeAPIReady() {
+    globalYtPlayer = new YT.Player('courseVideoPlayer', {
+        events: {
+            'onStateChange': onPlayerStateChange
+        }
+    });
+}
+
+// वीडियो Play या Pause होने पर बीच वाले बटन का आइकॉन बदलना
+function onPlayerStateChange(event) {
+    let ppBtn = document.getElementById('customPlayPauseBtn');
+    if(ppBtn) {
+        if (event.data == YT.PlayerState.PLAYING) {
+            ppBtn.innerHTML = '<i class="fas fa-pause"></i>'; // वीडियो चल रहा है तो Pause आइकॉन
+        } else if (event.data == YT.PlayerState.PAUSED || event.data == YT.PlayerState.ENDED) {
+            ppBtn.innerHTML = '<i class="fas fa-play"></i>'; // वीडियो रुका है तो Play आइकॉन
+        }
+    }
+}
+
+// 1. Play/Pause टॉगल करने का फंक्शन (शील्ड पर या बटन पर क्लिक करने से)
+window.togglePlayPause = function() {
+    if (globalYtPlayer && typeof globalYtPlayer.getPlayerState === 'function') {
+        let state = globalYtPlayer.getPlayerState();
+        if (state == 1) { // 1 मतलब PLAYING
+            globalYtPlayer.pauseVideo();
+        } else {
+            globalYtPlayer.playVideo();
+        }
+    }
+};
+
+// 2. 10 सेकंड आगे/पीछे करने का फंक्शन
+window.skipVideo = function(seconds) {
+    if (globalYtPlayer && typeof globalYtPlayer.getCurrentTime === 'function') {
+        let currentTime = globalYtPlayer.getCurrentTime();
+        globalYtPlayer.seekTo(currentTime + seconds, true);
+    }
+};
+
+// =========================================================================
+// 🎥 YOUTUBE VIDEO CONTROLLER (PIRACY PROTECTED & CUSTOM CONTROLS)
+// =========================================================================
+
+
+// API Ready होने पर प्लेयर को जोड़ना
+function onYouTubeIframeAPIReady() {
+    globalYtPlayer = new YT.Player('courseVideoPlayer', {
+        events: {
+            'onStateChange': onPlayerStateChange
+        }
+    });
+}
+
+function onPlayerStateChange(event) {
+    let ppBtn = document.getElementById('customPlayPauseBtn');
+    if(!ppBtn) return;
+    
+    if (event.data == YT.PlayerState.PLAYING) {
+        ppBtn.innerHTML = '<i class="fas fa-pause"></i>';
+    } else {
+        ppBtn.innerHTML = '<i class="fas fa-play"></i>';
+    }
+}
+
+window.togglePlayPause = function() {
+    if (globalYtPlayer && typeof globalYtPlayer.getPlayerState === 'function') {
+        let state = globalYtPlayer.getPlayerState();
+        if (state == 1) { 
+            globalYtPlayer.pauseVideo();
+        } else {
+            globalYtPlayer.playVideo();
+        }
+    }
+};
+
+window.skipVideo = function(seconds) {
+    if (globalYtPlayer && typeof globalYtPlayer.getCurrentTime === 'function') {
+        let currentTime = globalYtPlayer.getCurrentTime();
+        globalYtPlayer.seekTo(currentTime + seconds, true);
+    }
+};
+
 window.playPremiumVideo = function(link, title) {
     let videoId = extractYouTubeID(link);
     document.getElementById('playingVideoTitle').innerText = title;
     
-    // अगर API लोड हो चुकी है, तो सीधे वीडियो ID बदलें (इससे 10s Skip अच्छे से काम करेगा)
+    // controls=0 और disablekb=1 से सब कुछ साफ़ हो जाएगा
+    let ytUrl = `https://www.youtube.com/embed/${videoId}?autoplay=1&controls=0&disablekb=1&fs=0&modestbranding=1&playsinline=1&rel=0&enablejsapi=1`;
+    
+    let iframe = document.getElementById('courseVideoPlayer');
+    iframe.src = ytUrl;
+    
     if (globalYtPlayer && typeof globalYtPlayer.loadVideoById === 'function') {
-        globalYtPlayer.loadVideoById({
-            videoId: videoId,
-            playerVars: { 'autoplay': 1, 'modestbranding': 1, 'rel': 0, 'fs': 0 }
-        });
-    } else {
-        // बैकअप तरीका (अगर इंटरनेट स्लो होने से API लोड नहीं हुई)
-        document.getElementById('courseVideoPlayer').src = `https://www.youtube.com/embed/${videoId}?autoplay=1&modestbranding=1&rel=0&fs=0&enablejsapi=1`;
+        globalYtPlayer.loadVideoById(videoId);
     }
     
     document.getElementById('courseHeaderDark').style.display = 'none'; 
-    document.getElementById('videoPlayerWrapper').style.display = 'flex';
+    document.getElementById('videoPlayerWrapper').style.display = 'flex'; // flex करने से UI सही बैठेगा
     window.scrollTo({ top: 0, behavior: 'smooth' });
+};
+
+window.closeVideoPlayer = function() {
+    if (globalYtPlayer && typeof globalYtPlayer.stopVideo === 'function') {
+        globalYtPlayer.stopVideo();
+    }
+    let iframe = document.getElementById('courseVideoPlayer');
+    if(iframe) iframe.src = ""; 
+    
+    document.getElementById('videoPlayerWrapper').style.display = 'none';
+    document.getElementById('courseHeaderDark').style.display = 'flex';
+};
+
+// वीडियो बंद करने पर API को भी स्टॉप करना
+window.closeVideoPlayer = function() {
+    if (globalYtPlayer && typeof globalYtPlayer.stopVideo === 'function') {
+        globalYtPlayer.stopVideo();
+    }
+    let iframe = document.getElementById('courseVideoPlayer');
+    if(iframe) iframe.src = ""; 
+    
+    document.getElementById('videoPlayerWrapper').style.display = 'none';
+    document.getElementById('courseHeaderDark').style.display = 'flex';
 };
 
 
@@ -1549,3 +1619,113 @@ window.handleSyllabusBack = function() {
         document.getElementById('home').classList.add('active'); 
     }
 };
+
+// =========================================================================
+// 🌐 DYNAMIC GOVT. SITES SYSTEM + IN-APP BROWSER (ADMIN CONTROLLED)
+// =========================================================================
+
+
+// 1. एडमिन पैनल के डेटाबेस से साइट्स लोड करना
+
+
+function loadWebSitesFromDB() {
+    if(typeof db === 'undefined') return;
+    
+    db.collection("govt_sites").orderBy("createdAt", "desc").onSnapshot(
+        (snap) => {
+            let container = document.getElementById('webLinksContainer');
+            if(!container) return;
+            
+            let html = '';
+            snap.forEach(doc => {
+                let site = doc.data();
+                // Google API से ऑटोमैटिक लोगो
+                let domain = (new URL(site.url)).hostname;
+                let logoUrl = `https://www.google.com/s2/favicons?domain=${domain}&sz=64`;
+                
+                html += `
+                <div class="web-site-card" style="background: var(--white); padding: 12px 15px; border-radius: 12px; display: flex; align-items: center; gap: 15px; box-shadow: 0 4px 10px rgba(0,0,0,0.04); cursor: pointer; border: 1px solid #e2e8f0; transition: 0.2s;" onclick="openInAppBrowser('${site.url}', '${site.name}', '${logoUrl}')">
+                    <img src="${logoUrl}" style="width: 40px; height: 40px; border-radius: 8px; background: #f8fafc; padding: 5px; border: 1px solid #e2e8f0;" onerror="this.src='logo.png'">
+                    <div style="flex: 1;">
+                        <h4 style="color: var(--text); font-size: 0.95rem; margin-bottom: 2px;">${site.name}</h4>
+                        <p style="color: #64748b; font-size: 0.75rem;">Click to open portal</p>
+                    </div>
+                    <i class="fas fa-chevron-right" style="color: #cbd5e1;"></i>
+                </div>`;
+            });
+            
+            container.innerHTML = html || '<div style="text-align:center; padding:30px; color:#94a3b8;"><i class="fas fa-globe fa-3x" style="opacity:0.3; margin-bottom:15px;"></i><br>No Govt Sites added by Admin yet.</div>';
+        },
+        (error) => {
+            // 🔥 अगर Firebase से एरर आए तो लोडिंग रोक कर मेसेज दिखाए
+            console.error("Govt Sites Error: ", error);
+            let container = document.getElementById('webLinksContainer');
+            if(container) {
+                container.innerHTML = '<div style="text-align:center; padding:30px; color:#ef4444;"><i class="fas fa-exclamation-circle fa-2x" style="margin-bottom:10px;"></i><br>Failed to load sites. Database permission denied.</div>';
+            }
+        }
+    );
+}
+setTimeout(loadWebSitesFromDB, 2000);
+setTimeout(loadWebSitesFromDB, 2000);
+
+// Govt Sites पेज में सर्च बॉक्स
+window.filterWebSites = function() {
+    let query = document.getElementById('siteSearchInput').value.toLowerCase();
+    let cards = document.querySelectorAll('.web-site-card');
+    cards.forEach(card => {
+        let name = card.querySelector('h4').innerText.toLowerCase();
+        card.style.display = name.includes(query) ? "flex" : "none";
+    });
+};
+
+// Courses पेज में सर्च बॉक्स
+window.filterCoursesLocal = function() {
+    let query = document.getElementById('courseSearchInput').value.toLowerCase();
+    let cards = document.getElementById('courseContainer').querySelectorAll('.content-card');
+    cards.forEach(card => {
+        let title = card.querySelector('h3').innerText.toLowerCase();
+        card.style.display = title.includes(query) ? "block" : "none";
+    });
+};
+
+// Test Series पेज में सर्च बॉक्स
+window.filterTestsLocal = function() {
+    let query = document.getElementById('testSearchInput').value.toLowerCase();
+    let cards = document.getElementById('testContainer').querySelectorAll('.content-card');
+    cards.forEach(card => {
+        let title = card.querySelector('h3').innerText.toLowerCase();
+        card.style.display = title.includes(query) ? "block" : "none";
+    });
+};
+
+// =========================================================================
+// 🚀 IN-APP BROWSER CONTROLS (With Back Button)
+// =========================================================================
+let currentBrowserUrl = "";
+
+window.openInAppBrowser = function(url, title, logo) {
+    currentBrowserUrl = url;
+    document.getElementById('browserSiteTitle').innerText = title;
+    
+    // अगर लोगो है तो दिखाएं, वरना डिफॉल्ट लोगो
+    let logoEl = document.getElementById('browserSiteLogo');
+    if(logoEl) logoEl.src = logo || 'logo.png';
+    
+    // स्क्रीन दिखाएं और Iframe में लिंक लोड करें
+    document.getElementById('inAppBrowserOverlay').style.display = 'flex';
+    document.getElementById('browserIframe').src = url;
+}
+
+window.closeInAppBrowser = function() {
+    // स्क्रीन बंद करें और Iframe को खाली कर दें ताकि बैकग्राउंड में चलता न रहे
+    document.getElementById('inAppBrowserOverlay').style.display = 'none';
+    document.getElementById('browserIframe').src = ""; 
+}
+
+window.openLinkExternally = function() {
+    // यह बटन दबाते ही साइट ऐप से बाहर असली Chrome में खुल जाएगी
+    if(currentBrowserUrl) {
+        window.open(currentBrowserUrl, '_blank');
+    }
+}

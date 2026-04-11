@@ -1,14 +1,3 @@
-/**
- * ============================================================================
- * ⚙️ CONFIG.JS
- * ----------------------------------------------------------------------------
- * Description : Handles Firebase Initialization and Global App Variables.
- * ============================================================================
- */
-
-/* -------------------------------------------------------------------------- */
-/* 1. FIREBASE CONFIGURATION & INITIALIZATION                                 */
-/* -------------------------------------------------------------------------- */
 const firebaseConfig = {
     apiKey: "AIzaSyA0yEDkq6Wr2Sy4zIXQqZ6aHCAXK1ymSEw",
     authDomain: "sk-study-point.firebaseapp.com",
@@ -22,31 +11,15 @@ const firebaseConfig = {
 firebase.initializeApp(firebaseConfig);
 const db = firebase.firestore();
 
-// 👇 OFFLINE DATABASE LOGIC (MULTI-TAB SUPPORTED) 👇
-db.enablePersistence({ synchronizeTabs: true })
-  .catch((err) => {
-      if (err.code == 'failed-precondition') {
-          console.log("Multiple tabs open, multi-tab persistence failed.");
-      } else if (err.code == 'unimplemented') {
-          console.log("Browser doesn't support offline data.");
-      }
-  });
-
-  
 /* -------------------------------------------------------------------------- */
 /* 2. GLOBAL STATE VARIABLES                                                  */
 /* -------------------------------------------------------------------------- */
 let currentActiveUserEmail = null; 
-let currentUserData = null; // Stores currently authenticated user's document
-let cart = JSON.parse(localStorage.getItem('savedCart')) || []; // Local cart state
-
-// UI & Filter States
+let currentUserData = null; 
+let cart = JSON.parse(localStorage.getItem('savedCart')) || []; 
 let currentSelectedCategory = 'all'; 
 let currentCategoryName = 'All';
-let currentLang = 'en'; // Default application language
-let currentViewMode = 'all'; // Toggles between 'all' and 'purchased' views
-
-// Feature States
-let tempOtp = null; // Temporarily stores OTP for email verification
-let currentQodIndex = 0; // Tracks current Question of the Day index
-let isAiProcessing = false; // Prevents multiple rapid requests to AI solver
+let currentLang = 'en'; 
+let currentViewMode = 'all'; 
+let tempOtp = null; 
+let currentQodIndex = 0;

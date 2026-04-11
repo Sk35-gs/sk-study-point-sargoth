@@ -127,13 +127,21 @@ function answerQOD(qIndex, selectedOptIndex, element) {
     element.style.background = "rgba(16, 185, 129, 0.1)";
     showToast(currentLang === 'hi' ? `सही जवाब! +${posCoins} कॉइन्स` : `Correct! +${posCoins} Coins`, 'success');
     
-    // 2. डेटाबेस में सुरक्षित तरीके से कॉइन बढ़ाएं (हैक प्रूफ)
+    // QoD के आंसर और History को सेव करना
+    user.qodAnswers[qIndex] = selectedOptIndex;
+    if(!user.qodLogs) user.qodLogs = [];
+    
+    // हर सवाल के लिए एक रिकॉर्ड
+    user.qodLogs.push({
+        date: new Date().toLocaleDateString() + " " + new Date().toLocaleTimeString(),
+        earnedCoins: isCorrect ? posCoins : (negCoins > 0 ? -negCoins : 0),
+        status: isCorrect ? "Correct" : "Wrong"
+    });
+
     db.collection("users").doc(user.uid).update({
-        "stats.coins": firebase.firestore.FieldValue.increment(posCoins)
-    }).then(() => {
-        // लोकल डेटा भी अपडेट कर लें
-        user.stats.coins += posCoins;
-        document.getElementById('homeCoins').innerText = user.stats.coins;
+        qodAnswers: user.qodAnswers,
+        qodLogs: user.qodLogs,
+        "stats.streakDays": firebase.firestore.FieldValue.increment(user.stats.streakDays === 0 ? 1 : 0)
     });
 
 } else {
@@ -184,6 +192,8 @@ function showQodReport() {
     }
 
     let container = document.getElementById('qodContainerMain');
+    
+    // 🔥 FIX: यहाँ नीचे HTML के टैग्स सही से बंद (Close) किए गए हैं 
     container.innerHTML = `
         <div class="qod-report-card">
             <i class="fas fa-trophy" style="font-size: 3rem; color: #f1c40f; margin-bottom: 10px;"></i>
@@ -210,7 +220,8 @@ function showQodAnswerKey() {
     let dbQuestions = window.dynamicQoDConfig.questions;
     let container = document.getElementById('qodContainerMain');
     
-    let html = `<div style="background: var(--white); border-radius: 15px; padding: 15px; margin-bottom: 100px; box-shadow: 0 4px 10px rgba(0,0,0,0.05);">
+    // 🔥 FIX: यहाँ </div> सही से मैनेज किया गया है
+    let html = `<div style="background: var(--white); border-radius: 15px; padding: 15px; margin-bottom: 30px; box-shadow: 0 4px 10px rgba(0,0,0,0.05);">
         <h3 style="margin-bottom: 15px; text-align:center;" class="translatable" data-en="Answer Key" data-hi="उत्तर कुंजी">Answer Key</h3>`;
     
     dbQuestions.forEach((q, i) => {
@@ -244,5 +255,6 @@ function showQodAnswerKey() {
     });
     
     html += `<button onclick="showQodReport()" class="translatable" data-en="Back to Report" data-hi="रिपोर्ट पर वापस जाएँ" style="background: #333; color: white; border: none; padding: 10px; width: 100%; border-radius: 8px; font-weight: bold;">Back to Report</button></div>`;
+    
     container.innerHTML = html;
 }

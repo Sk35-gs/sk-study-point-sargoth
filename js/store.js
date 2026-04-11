@@ -13,34 +13,31 @@
 /* 1. CART MANAGEMENT & AUTO-BUY LOGIC                                        */
 /* -------------------------------------------------------------------------- */
 
-/**
- * Handles adding items to the cart or automatically unlocking free content.
- * @param {HTMLElement} button - The clicked button element to update its UI.
- * @param {string} title - The title of the course/test.
- * @param {number} price - The price of the content (0 means Free).
- * @param {string} type - 'course' or 'test'.
- */
-// store.js - नया handleBuy फंक्शन
 function handleBuy(button, title, price, type) {
     let user = getUserData();
     if (!user) return showToast("Please login first!", "error");
     
-    // कार्ट एरे सुनिश्चित करें
     if (!user.cart) user.cart = [];
 
     let purchasedArray = type === 'course' ? (user.purchasedCourses || []) : (user.purchasedTests || []);
 
-    // 1. अगर पहले से खरीदा हुआ है
-    if (purchasedArray.some(t => t && title && t.trim().toLowerCase() === title.trim().toLowerCase())) {
+    // 1. चेक करें कि क्या पहले से खरीदा हुआ है (Date ऑब्जेक्ट और स्ट्रिंग दोनों को सपोर्ट करेगा)
+    let isAlreadyBought = purchasedArray.some(t => {
+        let tTitle = typeof t === 'object' ? t.title : t;
+        return tTitle && title && tTitle.trim().toLowerCase() === title.trim().toLowerCase();
+    });
+
+    if (isAlreadyBought) {
         let targetNav = type === 'course' ? document.querySelectorAll('.nav-item')[1] : document.querySelectorAll('.nav-item')[2];
         switchTab(type === 'course' ? 'courses' : 'test', targetNav, 'purchased');
         return;
     }
 
-    // 2. फ्री कंटेंट ऑटो-बाय
+    // 2. फ्री कंटेंट ऑटो-बाय (Date के साथ)
     if (price === 0) {
-        if (type === 'course') user.purchasedCourses.push(title.trim());
-        else user.purchasedTests.push(title.trim());
+        let purchaseObj = { title: title.trim(), date: new Date().toLocaleDateString() };
+        if (type === 'course') user.purchasedCourses.push(purchaseObj);
+        else user.purchasedTests.push(purchaseObj);
         
         saveUserData(user); // Firestore में सेव
         showToast(currentLang === 'hi' ? "फ्री कंटेंट सक्रिय हो गया!" : "Free Content Activated!", 'success');
@@ -48,45 +45,77 @@ function handleBuy(button, title, price, type) {
         return;
     }
 
-    // 3. Paid Content कार्ट में जोड़ना (Firebase में)
+    // 3. Paid Content कार्ट में जोड़ना
     let exists = user.cart.find(item => item.title && item.title.trim().toLowerCase() === title.trim().toLowerCase());
     if(exists) { 
         showToast(currentLang === 'hi' ? "पहले से कार्ट में है!" : "Already in Cart!", 'error'); 
         return; 
     }
 
-    // आइटम को यूजर के कार्ट में डालें
     user.cart.push({ title: title.trim(), price: parseInt(price), type: type }); 
     
-    // Firebase Database में अपडेट करें
     db.collection("users").doc(user.uid).update({ cart: user.cart }).then(() => {
-        saveUserData(user); // लोकल डेटा भी सिंक करें
-        
-        // Button UI Update
+        saveUserData(user);
         button.innerHTML = '<i class="fas fa-check"></i> ' + (currentLang === 'hi' ? "कार्ट में है" : "Added");
         button.style.backgroundColor = '#10b981'; 
         button.style.color = '#fff';
         button.onclick = null; 
-        
         updateCartBadge(); 
         showToast(currentLang === 'hi' ? "कार्ट में जुड़ गया!" : "Added to Cart!", 'success');
     });
 }
 
-/** Processes the payment and moves cart items to user's purchased lists */
-function checkout() {
+async function checkout() {
     let user = getUserData();
-    // 🌟 यहाँ ग्लोबल cart की जगह user.cart चेक कर रहे हैं
     if(!user || !user.cart || user.cart.length === 0) {
         showToast("Your cart is empty!", "error");
         return;
     }
+
+    // 🔥 SMART LOGIC: 100% Promo Code या Coin से अमाउंट 0 होने पर सीधा अनलॉक
+    if (window.currentCartTotal === 0) {
+        let btn = document.querySelector('.checkout-box .btn-primary');
+        let originalText = btn.innerText;
+        btn.innerHTML = "Unlocking Free..."; 
+        btn.disabled = true;
+
+        try {
+            let todayDate = new Date().toLocaleDateString();
+            
+            user.cart.forEach(item => {
+                if(item.type === 'course') user.purchasedCourses.push({ title: item.title, date: todayDate });
+                if(item.type === 'test') user.purchasedTests.push({ title: item.title, date: todayDate });
+            });
+
+            if(window.coinsUsedInCart > 0) {
+                user.stats.coins -= window.coinsUsedInCart;
+            }
+
+            user.cart = [];
+            await db.collection("users").doc(user.uid).update({
+                purchasedCourses: user.purchasedCourses,
+                purchasedTests: user.purchasedTests,
+                "stats.coins": user.stats.coins,
+                cart: []
+            });
+
+            saveUserData(user);
+            showToast("🎉 Successfully Unlocked for Free!", "success");
+            updateCartBadge();
+            renderCart();
+            switchTab('courses', document.querySelectorAll('.nav-item')[1], 'purchased'); 
+        } catch(e) {
+            showToast("Error processing request.", "error");
+        } finally {
+            if(btn) { btn.innerHTML = originalText; btn.disabled = false; }
+        }
+        return; // ₹0 होने पर UTR स्कैनर नहीं खुलेगा
+    }
     
-    // QR Code वाला डब्बा खोलो
+    // अगर पैसे देने हैं तो QR Code वाला डब्बा खोलो
     document.getElementById('payAmountTxt').innerText = `₹${window.currentCartTotal}`;
     document.getElementById('utrNumber').value = '';
     
-    // AUTO UPI LINK GENERATE KARNA
     let merchantUpiId = "sk332404@ibl"; 
     let merchantName = "GAURAV VERMA";
     let upiUrl = `upi://pay?pa=${merchantUpiId}&pn=${merchantName}&am=${window.currentCartTotal}&cu=INR`;
@@ -105,7 +134,6 @@ async function submitManualPayment() {
     let user = getUserData();
     
     try {
-        // एडमिन के पास डेटाबेस में रिक्वेस्ट भेजना
         await db.collection("payments").add({
             uid: user.uid,
             name: user.name,
@@ -113,24 +141,24 @@ async function submitManualPayment() {
             phone: user.phone,
             amount: window.currentCartTotal,
             utr: utr,
-            items: cart, // इसमें कोर्स/टेस्ट का नाम है
+            items: user.cart, 
             status: "Pending",
             date: new Date().toLocaleDateString(),
             timestamp: firebase.firestore.FieldValue.serverTimestamp()
         });
 
-        // जो कॉइन यूज़ किये हैं, वो काट लेना
         if(window.coinsUsedInCart > 0) {
             user.stats.coins -= window.coinsUsedInCart;
-            saveUserData(user);
         }
 
-        // कार्ट खाली करना (Firebase से भी)
         user.cart = [];
-        await db.collection("users").doc(user.uid).update({ cart: [] });
+        await db.collection("users").doc(user.uid).update({ 
+            cart: [],
+            "stats.coins": user.stats.coins 
+        });
+        
         saveUserData(user);
         document.getElementById('paymentModal').style.display = 'none';
-        
         showToast("Your payment is processing. Track your order in Profile!", "success");
         
         updateCartBadge(); 
@@ -148,9 +176,8 @@ function removeFromCart(index) {
     let user = getUserData();
     if (!user || !user.cart) return;
 
-    user.cart.splice(index, 1); // आइटम हटाएं
+    user.cart.splice(index, 1); 
     
-    // Firebase में अपडेट करें
     db.collection("users").doc(user.uid).update({ cart: user.cart }).then(() => {
         saveUserData(user);
         updateCartBadge(); 
@@ -159,7 +186,6 @@ function removeFromCart(index) {
         applyContentFilter('test');
     });
 }
-
 
 function updateCartBadge() {
     let user = getUserData();
@@ -172,16 +198,13 @@ function updateCartBadge() {
     }
 }
 
-
-
 /* -------------------------------------------------------------------------- */
 /* 2. PROMO CODE SYSTEM (Admin Controlled)                                    */
 /* -------------------------------------------------------------------------- */
 
 let currentDiscountPercent = 0; 
-let currentPromoType = 'none'; // Tracks if the coupon is for 'course' or 'test'
+let currentPromoType = 'none'; 
 
-/** Verifies entered Promo Code from Firebase and applies discounts */
 async function applyPromoCode() {
     let promoInput = document.getElementById('promoInput');
     if(!promoInput) return;
@@ -199,41 +222,46 @@ async function applyPromoCode() {
         if(doc.exists) {
             let data = doc.data();
             
-            // Check 1: Is it a valid COURSE code?
-            if(data.courseCode && userInput === data.courseCode.toUpperCase() && data.courseDiscount > 0) {
-                currentPromoType = 'course';
-                currentDiscountPercent = data.courseDiscount;
-                showToast(`🎉 Course Code Applied! ${data.courseDiscount}% OFF`, "success");
+            if(data.courseCode && userInput === data.courseCode && data.courseDiscount > 0) {
+                let limit = data.courseLimit || 0;
+                let used = data.courseUsedCount || 0;
+                
+                if(limit > 0 && used >= limit) {
+                    showToast("❌ Promo Code Expired (Limit Reached)!", "error");
+                } else {
+                    currentPromoType = 'course';
+                    currentDiscountPercent = data.courseDiscount;
+                    showToast(`🎉 Course Code Applied! ${data.courseDiscount}% OFF`, "success");
+                }
             } 
-            // Check 2: Is it a valid TEST code?
-            else if(data.testCode && userInput === data.testCode.toUpperCase() && data.testDiscount > 0) {
-                currentPromoType = 'test';
-                currentDiscountPercent = data.testDiscount;
-                showToast(`🎉 Test Code Applied! ${data.testDiscount}% OFF`, "success");
+            else if(data.testCode && userInput === data.testCode && data.testDiscount > 0) {
+                let limit = data.testLimit || 0;
+                let used = data.testUsedCount || 0;
+
+                if(limit > 0 && used >= limit) {
+                    showToast("❌ Promo Code Expired (Limit Reached)!", "error");
+                } else {
+                    currentPromoType = 'test';
+                    currentDiscountPercent = data.testDiscount;
+                    showToast(`🎉 Test Code Applied! ${data.testDiscount}% OFF`, "success");
+                }
             } 
-            // Check 3: Invalid code
             else {
                 currentPromoType = 'none';
                 currentDiscountPercent = 0;
                 showToast("❌ Invalid Promo Code!", "error");
             }
-        } else { 
-            showToast("❌ No active offers!", "error"); 
         }
     } catch(e) { 
         showToast("Error checking code!", "error"); 
     } finally {
         applyBtn.innerText = originalText;
         applyBtn.disabled = false;
-        renderCart(); // Refresh cart to show new prices
+        renderCart(); 
     }
 }
 
-/** Renders cart UI and calculates totals with smart discount logic */
-
-
 function renderCart() {
-    // यहाँ हमने user को एक ही बार डिक्लेयर किया है
     let user = getUserData();
     let userCart = (user && user.cart) ? user.cart : []; 
 
@@ -248,7 +276,6 @@ function renderCart() {
 
     if(!list || !checkoutBox || !totalEl) return;
 
-    // Handle Empty Cart
     if(userCart.length === 0) {
         list.innerHTML = `<p style="text-align:center; margin-top: 50px; color: var(--text-gray);">
             <i class="fas fa-shopping-cart" style="font-size:3rem; opacity:0.3; margin-bottom:15px; display:block;"></i>
@@ -263,10 +290,8 @@ function renderCart() {
     list.innerHTML = ''; 
     checkoutBox.style.display = 'block';
     
-    // Calculate Subtotal & Discounts
     userCart.forEach((item, index) => {
         subTotal += item.price;
-        
         if(currentDiscountPercent > 0) {
             if(currentPromoType === 'course' && item.type === 'course') {
                 discountValue += (item.price * currentDiscountPercent) / 100;
@@ -274,16 +299,13 @@ function renderCart() {
                 discountValue += (item.price * currentDiscountPercent) / 100;
             }
         }
-        
         list.innerHTML += `
             <div class="cart-item">
                 <div class="cart-details">
                     <h4>${item.title}</h4>
                     <p>₹${item.price} <span style="font-size:0.7rem; color:var(--text-gray); background:var(--bg); padding:2px 5px; border-radius:4px; margin-left:5px;">${item.type.toUpperCase()}</span></p>
                 </div>
-                <button class="remove-btn" onclick="removeFromCart(${index})">
-                    <i class="fas fa-trash"></i>
-                </button>
+                <button class="remove-btn" onclick="removeFromCart(${index})"><i class="fas fa-trash"></i></button>
             </div>
         `;
     });
@@ -304,10 +326,9 @@ function renderCart() {
     let finalTotal = subTotal - discountValue;
 
     // --- COIN DISCOUNT लॉजिक ---
-    let maxCoinAllowed = Math.floor(finalTotal * 0.15); // 15% लिमिट
+    let maxCoinAllowed = Math.floor(finalTotal * 0.15); 
     let coinsToUse = 0;
 
-    // यहाँ हम दोबारा let user = getUserData() नहीं लिखेंगे!
     if(user && user.stats && user.stats.coins > 0) {
         coinsToUse = Math.min(user.stats.coins, maxCoinAllowed);
         finalTotal = finalTotal - coinsToUse;
@@ -323,15 +344,10 @@ function renderCart() {
     totalEl.innerText = '₹' + finalTotal;
 }
 
-
 /* -------------------------------------------------------------------------- */
 /* 3. CONTENT FILTERING & NAVIGATION LOGIC                                    */
 /* -------------------------------------------------------------------------- */
 
-/**
- * Filters the displayed content based on Category (RPSC, SSC) 
- * and View Mode (All vs My Courses/Tests).
- */
 function applyContentFilter(tabId) {
     const titlePrefix = currentSelectedCategory === 'all' ? (currentLang === 'hi' ? 'सभी' : 'All') : currentCategoryName;
     let user = getUserData(); 
@@ -340,7 +356,6 @@ function applyContentFilter(tabId) {
     const courseTitle = document.getElementById('coursePageTitle');
     const testTitle = document.getElementById('testPageTitle');
     
-    // Update Headers dynamically based on language and filter
     if(tabId === 'courses' && courseTitle) {
         courseTitle.innerText = currentViewMode === 'purchased' ? (currentLang==='hi'?"मेरे कोर्सेज":"My Courses") : titlePrefix + " Courses";
     }
@@ -371,59 +386,48 @@ function applyContentFilter(tabId) {
             
             let isBought = false;
             if(title !== "") {
-                isBought = purchasedArray.some(t => t && t.trim().toLowerCase() === title.toLowerCase());
+                isBought = purchasedArray.some(t => {
+                    let tTitle = typeof t === 'object' ? t.title : t;
+                    return tTitle && tTitle.trim().toLowerCase() === title.toLowerCase();
+                });
             }
             
             let matchesCategory = (targetCategory === 'all' || itemCategory === targetCategory);
             let matchesPurchased = (currentViewMode === 'all' || isBought);
 
-            // If it matches filters, show it and update its button
             if (matchesCategory && matchesPurchased) { 
                 item.style.display = 'block'; 
                 visibleCount++; 
                 
                 let btn = item.querySelector('.buy-now-btn') || item.querySelector('.explore-btn');
-                let isSeries = item.getAttribute('data-istestseries') === 'true'; // New Test Series Check
+                let isSeries = item.getAttribute('data-istestseries') === 'true'; 
                 
                 if(btn) {
                     if(isBought) {
-                        // User owns it -> Turn button into "Open"
                         btn.innerHTML = '<i class="fas fa-folder-open"></i> ' + (currentLang === 'hi' ? 'सीरीज़ खोलें' : 'Open Series');
                         btn.style.backgroundColor = '#10b981'; 
                         btn.style.color = 'white';
-                        
                         btn.onclick = function() { 
-                            if(tabId === 'courses') { 
-                                openCourseDetails(title); 
-                            } else {
-                                if(isSeries) {
-                                    openTestFolders(title); 
-                                } else {
-                                    openTestInstructions(title, parseInt(testDuration)); 
-                                }
-                            }
+                            if(tabId === 'courses') { openCourseDetails(title); } 
+                            else { if(isSeries) { openTestFolders(title); } else { openTestInstructions(title, parseInt(testDuration)); } }
                         };
                     } else {
-                        // User doesn't own it -> Check Cart Status
-                        let existsInCart = cart.find(c => c.title && c.title.trim().toLowerCase() === title.toLowerCase());
+                        let existsInCart = user.cart && user.cart.find(c => c.title && c.title.trim().toLowerCase() === title.toLowerCase());
                         if(existsInCart) {
                             btn.innerHTML = '<i class="fas fa-check"></i> ' + (currentLang === 'hi' ? "कार्ट में है" : "Added");
                             btn.style.backgroundColor = '#10b981'; 
                             btn.style.color = '#fff';
                             btn.onclick = null;
                         } else {
-                            // Default Buy Now state
                             btn.innerHTML = currentLang === 'hi' ? 'कार्ट में डालें' : 'Buy Now';
                             btn.style.backgroundColor = ''; 
                             btn.style.color = ''; 
-                            
                             let priceEl = item.querySelector('.new-price') || item.querySelector('.content-card-body div');
                             let priceNum = 0;
                             if(priceEl) {
                                 let numStr = priceEl.innerText.replace(/[^0-9]/g, ''); 
                                 if(numStr !== "") { priceNum = parseInt(numStr); }
                             }
-
                             let itemType = tabId === 'courses' ? 'course' : 'test';
                             btn.onclick = function() { handleBuy(this, title, priceNum, itemType); };
                         }
@@ -435,23 +439,17 @@ function applyContentFilter(tabId) {
         });
     }
 
-    // Toggle Empty State Messages
     const emptyMsg = document.getElementById(emptyMsgId);
     if(emptyMsg) {
-        if (currentViewMode === 'purchased' && visibleCount === 0) { 
-            emptyMsg.style.display = 'block'; 
-        } else { 
-            emptyMsg.style.display = 'none'; 
-        }
+        if (currentViewMode === 'purchased' && visibleCount === 0) { emptyMsg.style.display = 'block'; } 
+        else { emptyMsg.style.display = 'none'; }
     }
 }
 
-/** Handles clicking on a category icon on the Home screen */
 function selectCategory(categoryCode, element) {
     let displayName = element.querySelector('span').innerText; 
     const grid = document.getElementById('examGrid');
     
-    // Toggle off if clicking the already selected category
     if (currentSelectedCategory === categoryCode) {
         currentSelectedCategory = 'all'; 
         currentCategoryName = 'All Exams';
@@ -464,11 +462,9 @@ function selectCategory(categoryCode, element) {
         document.querySelectorAll('.exam-item').forEach(item => item.classList.remove('selected-exam'));
         element.classList.add('selected-exam'); 
         grid.classList.add('has-selection');
-        
         showToast(currentLang === 'hi' ? `${displayName} चुना गया!` : `${displayName} Selected!`, 'success');
     }
     
-    // Update Target Header Text
     const targetHeader = document.getElementById('targetHeader');
     if(targetHeader) {
         targetHeader.innerText = currentSelectedCategory === 'all' 
@@ -476,20 +472,14 @@ function selectCategory(categoryCode, element) {
             : displayName + ' Target';
     }
     
-    // Apply filters immediately
     applyContentFilter('courses'); 
     applyContentFilter('test');
 }
-
 
 /* -------------------------------------------------------------------------- */
 /* 4. FETCH DYNAMIC CONTENT FROM FIREBASE                                     */
 /* -------------------------------------------------------------------------- */
 
-/**
- * Main function called on App Load to fetch all Courses and Tests 
- * from the Firebase Database and inject them into the DOM as HTML cards.
- */
 window.loadDynamicContent = async function() {
     
     // ================= 1. FETCH COURSES =================
@@ -500,10 +490,7 @@ window.loadDynamicContent = async function() {
             const emptyMsg = document.getElementById('emptyCourseMsg');
             
             courseContainer.innerHTML = '';
-            if(emptyMsg) { 
-                emptyMsg.style.display = 'none'; 
-                courseContainer.appendChild(emptyMsg); 
-            }
+            if(emptyMsg) { emptyMsg.style.display = 'none'; courseContainer.appendChild(emptyMsg); }
 
             let html = "";
             snapshot.forEach(doc => {
@@ -522,7 +509,7 @@ window.loadDynamicContent = async function() {
                         </div>
                         <div class="course-price-row">
                             <div class="price-calc">
-                                <span class="old-price">₹${course.oldPrice || ''}</span>
+                                <span class="old-price">${course.oldPrice ? '₹'+course.oldPrice : ''}</span>
                                 <span class="new-price">₹${course.newPrice}</span>
                             </div>
                             <div class="course-action-btns">
@@ -534,9 +521,7 @@ window.loadDynamicContent = async function() {
             });
             courseContainer.insertAdjacentHTML('beforeend', html);
             applyContentFilter('courses'); 
-        } catch (error) { 
-            console.error("Error loading courses:", error); 
-        }
+        } catch (error) { console.error("Error loading courses:", error); }
     }
 
     // ================= 2. FETCH TESTS =================
@@ -547,17 +532,12 @@ window.loadDynamicContent = async function() {
             const emptyMsg = document.getElementById('emptyTestMsg');
             
             testContainer.innerHTML = '';
-            if(emptyMsg) { 
-                emptyMsg.style.display = 'none'; 
-                testContainer.appendChild(emptyMsg); 
-            }
+            if(emptyMsg) { emptyMsg.style.display = 'none'; testContainer.appendChild(emptyMsg); }
 
             let html = "";
             snapshot.forEach(doc => {
                 let test = doc.data();
                 let safeTitle = test.title ? test.title.replace(/'/g, "\\'") : '';
-                
-                // Track if it's a new advanced Test Series (Folders) or an old single test
                 let isSeries = test.isTestSeries ? 'true' : 'false';
                 
                 html += `
@@ -586,8 +566,6 @@ window.loadDynamicContent = async function() {
             });
             testContainer.insertAdjacentHTML('beforeend', html);
             applyContentFilter('test'); 
-        } catch (error) { 
-            console.error("Error loading tests:", error); 
-        }
+        } catch (error) { console.error("Error loading tests:", error); }
     }
 };

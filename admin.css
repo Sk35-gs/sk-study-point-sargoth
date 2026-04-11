@@ -144,71 +144,61 @@ body { background: var(--admin-bg); color: var(--text-light); height: 100vh; ove
 .q-row input:focus { border-color: var(--primary); }
 .btn-translate { background: rgba(59, 130, 246, 0.1); color: #3b82f6; border: 1px solid #3b82f6; padding: 5px 10px; border-radius: 6px; cursor: pointer; font-size: 0.8rem; margin-top: 5px; }
 .btn-remove-q { background: rgba(239, 68, 68, 0.1); color: #ef4444; border: none; padding: 5px 10px; border-radius: 6px; cursor: pointer; font-size: 0.8rem; }
+
 /* ========================================================= */
-/* 📱 PERFECT MOBILE RESPONSIVE ADMIN UI (APP STYLE)         */
+/* 📱 PERFECT MOBILE RESPONSIVE UI FOR MASTER ADMIN          */
 /* ========================================================= */
 
 /* PC में 3 लाइन वाला बटन छुपा कर रखें */
 .mobile-menu-btn { display: none; }
 
+/* टैबलेट (Tablet) के लिए */
+@media screen and (max-width: 1024px) {
+    .stats-grid { grid-template-columns: repeat(2, 1fr); }
+}
+
+/* मोबाइल (Mobile) के लिए */
 @media screen and (max-width: 768px) {
     #dashboardScreen { flex-direction: column; }
     
-    /* 1. Header: Logo + Name + Menu in ONE LINE */
-    .sidebar { width: 100%; height: auto; border-right: none; position: relative; z-index: 1000; }
-    .sidebar-header { 
-        padding: 12px 15px; 
-        display: flex; 
-        justify-content: space-between; /* दोनों को कोनों में धकेलेगा */
-        align-items: center; 
-        border-bottom: 1px solid var(--border);
-        background: var(--panel-bg);
-    }
+    /* 1. Header: Logo + Menu in ONE LINE */
+    .sidebar { width: 100%; height: auto; border-right: none; position: sticky; top: 0; z-index: 1000; box-shadow: 0 4px 10px rgba(0,0,0,0.3); }
+    .sidebar-header { padding: 12px 15px; display: flex; justify-content: space-between; align-items: center; background: var(--panel-bg); }
+    .mobile-app-name { font-size: 1.1rem !important; }
+    .desktop-subtitle { display: none; } 
     
-    /* नाम को एक लाइन में सेट करना और साइज़ छोटा करना */
-    .mobile-app-name { font-size: 1.05rem !important; white-space: nowrap; }
-    .desktop-subtitle { display: none; } /* Master Control टेक्स्ट को मोबाइल में छुपाएं */
-    .sidebar-header img { width: 38px; height: 38px; }
-    
-    /* 3 लाइन वाला बटन (Hamburger Icon) दिखाना */
+    /* 3 लाइन वाला बटन दिखाना */
     .mobile-menu-btn { display: block; font-size: 1.6rem; color: white; cursor: pointer; }
 
-    /* 2. Menu List: Hidden by default, Opens as Dropdown */
-    .nav-list { 
-        display: none; /* शुरुआत में बंद रहेगा */
-        position: absolute; 
-        top: 100%; left: 0; width: 100%; 
-        background: var(--panel-bg); 
-        border-bottom: 1px solid var(--border); 
-        box-shadow: 0 10px 30px rgba(0,0,0,0.8); 
-        max-height: 75vh; padding: 15px;
-    }
+    /* 2. Menu List Dropdown */
+    .nav-list { display: none; position: absolute; top: 100%; left: 0; width: 100%; background: var(--panel-bg); border-bottom: 1px solid var(--border); box-shadow: 0 10px 30px rgba(0,0,0,0.8); max-height: 75vh; overflow-y: auto; padding: 10px; }
     .nav-list.show { display: block; animation: slideDown 0.3s ease; }
     @keyframes slideDown { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
 
     /* 3. Main Content Fixes */
-    .top-nav { padding: 0 15px; height: 50px; }
-    .page-title { font-size: 1rem; }
+    .top-nav { padding: 0 15px; height: 60px; }
+    .page-title { font-size: 1.1rem; }
     .workspace { padding: 15px; }
     
-    /* 4. Dashboard Stats (2 in a row) */
-    .stats-grid { grid-template-columns: repeat(2, 1fr); gap: 12px; }
-    .stat-info h3 { font-size: 1.5rem; }
-    @media (max-width: 380px) { .stats-grid { grid-template-columns: 1fr; } } /* बहुत छोटे फोन के लिए */
-    
-    /* 5. Forms & Modals Fixes */
-    .form-grid { grid-template-columns: 1fr; }
+    /* 4. Stats & Forms (1 Column) */
+    .stats-grid { grid-template-columns: 1fr; gap: 15px; }
+    .form-grid { grid-template-columns: 1fr; gap: 15px; }
     .full-width { grid-column: span 1; }
-    #addCourseModal > div, #addTestModal > div { width: 95%; max-height: 90vh; padding: 20px 15px; }
-    .q-grid { grid-template-columns: 1fr; }
     
-    /* 6. Swipeable Tables (टेबल पिचकेगी नहीं) */
+    /* 5. Swipeable Tables (टेबल पिचकेगी नहीं, बल्कि स्क्रॉल होगी) */
     .erp-panel { padding: 15px; overflow-x: auto; }
-    .erp-table { min-width: 600px; }
+    .erp-table { white-space: nowrap; min-width: 600px; }
 
-    /* 7. Deep Folder UI Fixes */
-    .content-item { flex-direction: column; align-items: stretch; margin-left: 5px; }
-    .content-item select, .content-item input.c-title, .content-item input.c-link { width: 100%; margin-bottom: 5px;}
-    .topic-folder { margin-left: 10px; }
-    .btn-add-content, .btn-add-topic { margin-left: 0; width: 100%; margin-top: 5px; }
+    /* 6. Modals Fix (पॉपअप स्क्रीन से बाहर नहीं जाएंगे) */
+    .modal-box, #addCourseModal > div, #addTestModal > div, #qodBuilderModal > div, #studentDetailsModal > div { 
+        width: 95% !important; 
+        padding: 20px 15px !important; 
+        margin: 10px;
+    }
+
+    /* 7. Course/Test Folder Builder Fixes */
+    .content-item { flex-direction: column; align-items: stretch; margin-left: 0; }
+    .content-item select, .content-item input.c-title, .content-item input.c-link { width: 100%; margin-bottom: 8px; }
+    .btn-add-content, .btn-add-topic { margin-left: 0; width: 100%; margin-top: 10px; }
+    .topic-folder { margin-left: 5px; }
 }
