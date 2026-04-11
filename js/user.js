@@ -270,16 +270,31 @@ function finalizeProfileUpdate(user, btn, originalText) {
     }
 }
 // --- REFER & EARN LOGIC ---
-function shareApp() {
+window.shareApp = async function() {
     let user = getUserData();
     let myCode = user.myReferralCode || "SK" + user.uid.substring(0,5).toUpperCase();
-    let shareText = `Download SK STUDY POINT App and get 500 Bonus Coins! 🚀\nUse my Referral Code: *${myCode}*\nDownload Link: https://your-website.com`;
     
+    // 👇 यहाँ पर अपना APKPure वाला लिंक डालें 👇
+    let appDownloadLink = "https://apkpure.com/sk-study-point-sargoth/com.skstudypoint.sargoth/download"; 
+    
+    let shareMessage = `🚀 SK STUDY POINT SARGOTH ऐप डाउनलोड करें और पाएं 500 Bonus Coins बिल्कुल फ्री!\n\n👉 मेरा Referral Code इस्तेमाल करें: *${myCode}*\n\n📲 यहाँ से ऐप डाउनलोड करें:`;
+    
+    // मोबाइल फोन में असली 'Share Menu' खोलने के लिए
     if (navigator.share) {
-        navigator.share({ title: 'SK STUDY POINT', text: shareText });
+        try {
+            await navigator.share({ 
+                title: 'SK STUDY POINT', 
+                text: shareMessage,
+                url: appDownloadLink // URL को अलग से देना ज्यादा सही काम करता है
+            });
+        } catch (err) {
+            console.log("User cancelled share or error: ", err);
+        }
     } else {
-        navigator.clipboard.writeText(shareText);
-        showToast("Code copied to clipboard!", "success");
+        // अगर कंप्यूटर या लैपटॉप है, तो टेक्स्ट कॉपी हो जाएगा
+        let fullText = shareMessage + "\n" + appDownloadLink;
+        navigator.clipboard.writeText(fullText);
+        showToast("Link & Code copied! Paste it anywhere to share.", "success");
     }
 }
 
