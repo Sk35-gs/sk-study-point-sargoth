@@ -1153,9 +1153,8 @@ function renderTestContentsUI(subIdx, secIdx) {
         </div>`;
     });
 
-    directTests.forEach((test) => {
+    directTests.forEach((test, testIdx) => {
         let qCount = test.questions ? test.questions.length : 0;
-        let testJson = encodeURIComponent(JSON.stringify(test)); 
         html += `
         <div class="edtech-content-card" style="border-left: 4px solid #10b981;">
             <div class="content-top-row">
@@ -1170,7 +1169,7 @@ function renderTestContentsUI(subIdx, secIdx) {
                 </div>
             </div>
             <div class="content-action-row">
-                <button class="ed-btn" style="width:100%; background:#10b981; color:white; border:none; padding:10px;" onclick="startSeriesTest('${testJson}')">
+                <button class="ed-btn" style="width:100%; background:#10b981; color:white; border:none; padding:10px; cursor:pointer;" onclick="startDirectTestByIndex(${subIdx}, ${secIdx}, ${testIdx})">
                     <i class="fas fa-play-circle"></i> Start Test
                 </button>
             </div>
@@ -1198,9 +1197,8 @@ function renderTopicTestsUI(subIdx, secIdx, topIdx) {
     if(tests.length === 0) return contentBox.innerHTML = '<p style="text-align:center; color:#aaa;">No tests in this topic.</p>';
 
     let html = '';
-    tests.forEach((test) => {
+    tests.forEach((test, testIdx) => {
         let qCount = test.questions ? test.questions.length : 0;
-        let testJson = encodeURIComponent(JSON.stringify(test)); 
         html += `
         <div class="edtech-content-card" style="border-left: 4px solid #10b981;">
             <div class="content-top-row">
@@ -1215,7 +1213,7 @@ function renderTopicTestsUI(subIdx, secIdx, topIdx) {
                 </div>
             </div>
             <div class="content-action-row">
-                <button class="ed-btn" style="width:100%; background:#10b981; color:white; border:none; padding:10px;" onclick="startSeriesTest('${testJson}')">
+                <button class="ed-btn" style="width:100%; background:#10b981; color:white; border:none; padding:10px; cursor:pointer;" onclick="startTopicTestByIndex(${subIdx}, ${secIdx}, ${topIdx}, ${testIdx})">
                     <i class="fas fa-play-circle"></i> Start Test
                 </button>
             </div>
@@ -1235,25 +1233,47 @@ window.handleTestBackBtn = function() {
 }
 
 // 🚀 सीरीज के अंदर वाला टेस्ट शुरू करना (NEW LOGIC)
-window.startSeriesTest = function(encodedTestJson) {
-    let testData = JSON.parse(decodeURIComponent(encodedTestJson));
-    
-    if (!testData.questions || testData.questions.length === 0) {
+// 🚀 टेस्ट लॉन्च करने का सुरक्षित फंक्शन (बिना किसी कोटेशन/स्ट्रिंग एरर के)
+window.launchSeriesTestObj = function(testData) {
+    if (!testData || !testData.questions || testData.questions.length === 0) {
         alert("This test has no questions! Please contact admin.");
         return;
     }
 
+    let root = window.activeTestRootData || {};
     currentTestConfig = { 
-        title: testData.title, 
+        title: testData.title || "Mock Test", 
         duration: testData.duration || 60,
-        positiveMarks: Number(window.activeTestRootData.positiveMarks) || 2,
-        negativeMarking: Number(window.activeTestRootData.negativeMarking) || 0,
-        instructions: `Each correct answer carries +${Number(window.activeTestRootData.positiveMarks) || 2} marks.\nThere is a negative marking of -${Number(window.activeTestRootData.negativeMarking) || 0} marks for each wrong answer.`
+        positiveMarks: Number(root.positiveMarks) || 2,
+        negativeMarking: Number(root.negativeMarking) || 0,
+        instructions: `Each correct answer carries +${Number(root.positiveMarks) || 2} marks.\nThere is a negative marking of -${Number(root.negativeMarking) || 0} marks for each wrong answer.`
     };
     realTestQuestions = testData.questions || [];
     
-    document.getElementById('instTestTitle').innerText = testData.title;
+    document.getElementById('instTestTitle').innerText = testData.title || "Mock Test";
     document.getElementById('examInstructionPage').style.display = 'flex';
+};
+
+// डायरेक्ट टेस्ट (Full Length) के लिए
+window.startDirectTestByIndex = function(subIdx, secIdx, testIdx) {
+    try {
+        let testData = activeTestSyllabus[subIdx].sections[secIdx].directTests[testIdx];
+        window.launchSeriesTestObj(testData);
+    } catch(e) {
+        console.error("Test Launch Error:", e);
+        alert("Failed to start this test.");
+    }
+};
+
+// टॉपिक टेस्ट के लिए
+window.startTopicTestByIndex = function(subIdx, secIdx, topIdx, testIdx) {
+    try {
+        let testData = activeTestSyllabus[subIdx].sections[secIdx].topics[topIdx].tests[testIdx];
+        window.launchSeriesTestObj(testData);
+    } catch(e) {
+        console.error("Test Launch Error:", e);
+        alert("Failed to start this test.");
+    }
 };
 
 // =========================================================================
